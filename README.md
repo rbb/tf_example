@@ -12,17 +12,16 @@ tensorflow-lite, which will run on Raspian Stretch.
 Installing with pip completes, but on old hardware, this fails to run.
 Version 1.50 and earlier are compiled without AVX instructions, which will work
 on older hardware. However, TensorFlow Lite requires much newer releases.
-    ```
+
     sudo apt install python3-pip libcublas9.1
     pip3 install tensorflow==1.5.0
     #wget https://github.com/schrepfler/tensorflow-community-wheels/releases/download/v1.12.0/tensorflow-1.12.0-cp36-cp36m-linux_x86_64.whl
     #pip3 install tensorflow-1.12.0-cp36-cp36m-linux_x86_64.whl
-    ```
     
 ### Running with a docker image
 Running Tensorflow from a docker image crashes (on older hardware). Probably 
 because of AVX instructions?
-    ```
+
     sudo apt install docker.io
     sudo adduser -aG docker $USER
     # completely logout and log back in, or reboot 
@@ -40,11 +39,10 @@ because of AVX instructions?
     ./tensorflow/lite/tools/make/build_rpi_lib.sh
 
     # This should compile a static library in: `tensorflow/lite/tools/make/gen/lib/rpi_armv7/libtensorflow-lite.a`.
-    ```
 
 ## Works: Compiling from source
 So, that leaves us with compiling from source...
-    ```
+
     # https://medium.com/@Oysiyl/install-tensorflow-1-8-0-with-gpu-from-source-on-ubuntu-18-04-bionic-beaver-35cfa9df3600
     sudo apt install build-essential cmake python3-dev
     sudo apt install libcupti-dev libcuda-9.1-1 nvidia-cuda-dev
@@ -74,7 +72,6 @@ So, that leaves us with compiling from source...
     hello = tf.constant('Hello, TensorFlow!')
     sess = tf.Session()
     print(sess.run(hello))
-    ```
 
 Note: *DO NOT* (pip3) install mxnet, it will mess up the tensorflow install
 
@@ -83,19 +80,17 @@ Note: *DO NOT* (pip3) install mxnet, it will mess up the tensorflow install
 ## Things that didn't work
 Downloading the raw model and building it didn't work. It appears to be missing
 a bazel workspace.
-    ```
+
     #CHECKPOINT_DIR=/tmp/checkpoints
     CHECKPOINT_DIR=./checkpoints
     mkdir ${CHECKPOINT_DIR}
     wget http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_1.0_224.tgz
     tar -xvf mobilenet_v1_1.0_224.tgz
     mv mobilenet_v1_1.0_224.ckpt.* ${CHECKPOINT_DIR}
-    ```
 
-## Working: Install tensorflow_hub
-    ```
+## Working: Install TensorFlow Hub
+
     pip3 install tensorflow_hub
-    ```
 
 # Links
 - https://www.tensorflow.org/lite/guide/build_rpi
@@ -110,7 +105,7 @@ The data comes from:
 
 These data sets are organized in the tree below, where labels are in the file
 name.
-    ```
+
     dogs-vs-cats
     ├── sampleSubmission.csv
     ├── test
@@ -118,12 +113,11 @@ name.
     └── train
         ├── cat.xxxx.jpg
         └── dog.xxxx.jpg
-    ```
 
 However, for Keras to digest them, we need to use a directory structure to label
 them. In the example below, loading the `train` directory with keras will have a
 `dog` label and a `cat` label:
-    ```
+
     dogs-vs-cats
     ├── sampleSubmission.csv
     ├── test
@@ -133,7 +127,6 @@ them. In the example below, loading the `train` directory with keras will have a
     │   │   └── cat.xxxx.jpg # Note: name doesn't matter here
     │   └── dog
     │       └── dog.xxxx.jpg # Note: name doesn't matter here
-    ```
 
 # Running the scripts
 - `tf_hello.py` simple 'Hello World' script, to verify that the TensorFlow
@@ -147,10 +140,10 @@ It will load the mobile net model and test it on the dogs-vs-cats data.
 like, potentially modifying parameters each time.
 
 - To run a script within ipython3, do something like:
+
     ```
     exec(open("./tfhub_test.py").read())
     ```
 
 
-<-- vim: ts=4:sw=4
--->
+[comment]: # (vim: ts=4:sw=4)
