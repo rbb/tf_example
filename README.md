@@ -97,7 +97,9 @@ a bazel workspace.
 - https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet_v1.md
 - https://github.com/tensorflow/models/tree/master/research/slim/nets/mobilenet 
 - https://www.tensorflow.org/hub/tutorials/image_retraining 
+- https://www.tensorflow.org/tutorials/images/hub_with_keras
 - https://github.com/schrepfler/tensorflow-community-wheels/releases/tag/v1.12.0
+- https://www.tensorflow.org/lite/convert/python_api
 
 # Kaggle Test Data
 The data comes from:
