@@ -53,7 +53,7 @@ So, that leaves us with compiling from source...
     chmod +x  bazel-0.22.0-installer-linux-x86_64.sh
     ./bazel-0.22.0-installer-linux-x86_64.sh
 
-    #git clone tensorflow
+    git clone tensorflow
     cd tensorflow
     ./configure
     # The build process chews up too many resources (memory?), so we need to
@@ -80,7 +80,9 @@ Note: *DO NOT* (pip3) install mxnet, it will mess up the tensorflow install
 
 # Install Models
 
-    Building mobilenet doesn't work - missing a workspace
+## Things that didn't work
+Downloading the raw model and building it didn't work. It appears to be missing
+a bazel workspace.
     ```
     #CHECKPOINT_DIR=/tmp/checkpoints
     CHECKPOINT_DIR=./checkpoints
@@ -90,7 +92,7 @@ Note: *DO NOT* (pip3) install mxnet, it will mess up the tensorflow install
     mv mobilenet_v1_1.0_224.ckpt.* ${CHECKPOINT_DIR}
     ```
 
-    Install tensorflow_hub
+## Working: Install tensorflow_hub
     ```
     pip3 install tensorflow_hub
     ```
@@ -100,6 +102,55 @@ Note: *DO NOT* (pip3) install mxnet, it will mess up the tensorflow install
 - https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet_v1.md
 - https://www.tensorflow.org/hub/tutorials/image_retraining 
 - https://github.com/schrepfler/tensorflow-community-wheels/releases/tag/v1.12.0
+
+# Kaggle Test Data
+The data comes from:
+- https://www.kaggle.com/c/dogs-vs-cats/data
+- https://www.kaggle.com/c/dogs-vs-cats-redux-kernels-edition/data
+
+These data sets are organized in the tree below, where labels are in the file
+name.
+    ```
+    dogs-vs-cats
+    ├── sampleSubmission.csv
+    ├── test
+    │   └── xxxx.jpg
+    └── train
+        ├── cat.xxxx.jpg
+        └── dog.xxxx.jpg
+    ```
+
+However, for Keras to digest them, we need to use a directory structure to label
+them. In the example below, loading the `train` directory with keras will have a
+`dog` label and a `cat` label:
+    ```
+    dogs-vs-cats
+    ├── sampleSubmission.csv
+    ├── test
+    │   └── xxxx.jpg
+    ├── train
+    │   ├── cat
+    │   │   └── cat.xxxx.jpg # Note: name doesn't matter here
+    │   └── dog
+    │       └── dog.xxxx.jpg # Note: name doesn't matter here
+    ```
+
+# Running the scripts
+- `tf_hello.py` simple 'Hello World' script, to verify that the TensorFlow
+install is working.
+
+- `tfhub_example.py` can be run from the command line. It calls `tfhub_test.py`.
+It will load the mobile net model and test it on the dogs-vs-cats data.
+
+- `tfhub_test.py` can be re-run multiple times, by starting ipython(3), running
+`tfhub_example.py` once, and then running `tfhub_test.py` as many times as you
+like, potentially modifying parameters each time.
+
+- To run a script within ipython3, do something like:
+    ```
+    exec(open("./tfhub_test.py").read())
+    ```
+
 
 <-- vim: ts=4:sw=4
 -->
