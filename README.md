@@ -4,7 +4,7 @@ Building an Image Classifier with Tensorflow, running on a Pi
 Starting with Ubuntu 18.04 to train the neural net, and convert to
 tensorflow-lite, which will run on Raspian Stretch.
 
-# Installing TensorFlow
+# Installing TensorFlow on an Older Desktop
 
 ## Things that did not work
 
@@ -95,6 +95,7 @@ a bazel workspace.
 # Links
 - https://www.tensorflow.org/lite/guide/build_rpi
 - https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet_v1.md
+- https://github.com/tensorflow/models/tree/master/research/slim/nets/mobilenet 
 - https://www.tensorflow.org/hub/tutorials/image_retraining 
 - https://github.com/schrepfler/tensorflow-community-wheels/releases/tag/v1.12.0
 
@@ -145,5 +146,15 @@ like, potentially modifying parameters each time.
     exec(open("./tfhub_test.py").read())
     ```
 
+# Installing on Pi
+
+    sudo apt install python3 python3-matplotlib python3-scipy
+    pip3 install tensorflow tensorflow-hub
+
+Running the scripts on the Pi is the same as running on the desktop.
+
+# Results
+
+![TF Performance Summary](./TF_Performance_Summary.png)
 
 [comment]: # (vim: ts=4:sw=4)
