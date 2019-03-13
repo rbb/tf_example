@@ -8,7 +8,7 @@
 
 
 import tensorflow as tf
-import matplotlib.pylab as plt
+#import matplotlib.pylab as plt
 import numpy as np
 import PIL.Image as Image
 import time
@@ -24,7 +24,10 @@ image_generator = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1/255)
 
 print('Classifier config...')
 # Setup the classifier
-classifier_url = "https://tfhub.dev/google/imagenet/mobilenet_v2_100_224/classification/2" #@param {type:"string"}
+# See a list of nets at: https://tfhub.dev/s?network-architecture=mobilenet-v2
+#classifier_url = "https://tfhub.dev/google/imagenet/mobilenet_v2_140_224/classification/2" #@param {type:"string"}
+#classifier_url = "https://tfhub.dev/google/imagenet/mobilenet_v2_100_224/classification/2" #@param {type:"string"}
+classifier_url = "https://tfhub.dev/google/imagenet/mobilenet_v2_035_224/classification/2" #@param {type:"string"}
 def classifier(x):
   classifier_module = hub.Module(classifier_url)
   return classifier_module(x)
@@ -71,19 +74,5 @@ print('Elapsed time to load classifier : ' +str(end-start))
 #
 #           Run it on a batch of images
 #
-"""
-print('Loading a batch of images...')
-data_root='dogs-vs-cats/train/cat'
-#data_root='dogs-vs-cats/test'
-#data_root='cat_photos'
-image_data = image_generator.flow_from_directory(str(data_root), target_size=IMAGE_SIZE)
-for image_batch,label_batch in image_data:
-  print("Image batch shape: ", image_batch.shape)
-  print("Label batch shape: ", label_batch.shape)
-  break
-result_batch = classifier_model.predict(image_batch)
-labels_batch = imagenet_labels[np.argmax(result_batch, axis=-1)]
-print(labels_batch)
-"""
 exec(open("./tfhub_test.py").read())
 
