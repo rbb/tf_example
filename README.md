@@ -100,6 +100,9 @@ a bazel workspace.
 - https://www.tensorflow.org/tutorials/images/hub_with_keras
 - https://github.com/schrepfler/tensorflow-community-wheels/releases/tag/v1.12.0
 - https://www.tensorflow.org/lite/convert/python_api
+- https://towardsdatascience.com/transfer-learning-using-mobilenet-and-keras-c75daf7ff299
+- https://flyyufelix.github.io/2016/10/03/fine-tuning-in-keras-part1.html
+- https://flyyufelix.github.io/2016/10/08/fine-tuning-in-keras-part2.html
 
 # Kaggle Test Data
 The data comes from:
