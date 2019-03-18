@@ -4,12 +4,12 @@
   "include_top"     : false,
 
   "train_path"      : "dogs-vs-cats/train",
-  "test_path"       : "dogs-vs-cats/test",
-  "features_path"   : "tfk_output/dogs-vs-cats/mobilenet/features.h5",
-  "labels_path"     : "tfk_output/dogs-vs-cats/mobilenet/labels.h5",
-  "results"         : "tfk_output/dogs-vs-cats/mobilenet/results.txt",
-  "classifier_path" : "tfk_output/dogs-vs-cats/mobilenet/classifier.pickle",
-  "model_path"      : "tfk_output/dogs-vs-cats/mobilenet/model",
+  "out_path"        : "tfk_output/dogs-vs-cats/mobilenet-train",
+  "features_file"   : "features.h5",
+  "labels_file"     : "labels.h5",
+  "results_file"    : "results.txt",
+  "classifier_file" : "classifier.pickle",
+  "model_file"      : "model",
 
   "test_size"       : 0.10,
   "seed"            : 9,

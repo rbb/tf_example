@@ -1,4 +1,4 @@
-﻿#!/usr/bin/python3
+#!/usr/bin/python3
 
 # From https://gogul09.github.io/software/flower-recognition-deep-learning
 
@@ -12,6 +12,7 @@ from sklearn.metrics import confusion_matrix
 import numpy as np
 import h5py
 import os
+import io
 import json
 import pickle
 import seaborn as sns
@@ -22,16 +23,23 @@ import matplotlib.pyplot as plt
 #  config = json.load(f)
 config = json.load(io.open('tfk_conf.json', 'r', encoding='utf-8-sig'))
 
+def ld_conf_path(f, config=config, opath="out_path"):
+    p = os.path.join(config[opath], config[f])
+    return p
+
 # config variables
-test_size     = config["test_size"]
-seed      = config["seed"]
-features_path   = config["features_path"]
-labels_path   = config["labels_path"]
-results     = config["results"]
-classifier_path = config["classifier_path"]
+model_name    = config["model"]
+weights       = config["weights"]
+include_top   = config["include_top"]
 train_path    = config["train_path"]
-num_classes   = config["num_classes"]
-classifier_path = config["classifier_path"]
+features_path = ld_conf_path("features_file")
+labels_path   = ld_conf_path("labels_file")
+results       = config["results_file"]
+model_path    = ld_conf_path("model_file")
+classifier_path = ld_conf_path("classifier_file")
+num_classes    = config["num_classes"]
+seed           = config["seed"]
+test_size     = config["test_size"]
 
 # import features and labels
 h5f_data  = h5py.File(features_path, 'r')
@@ -116,7 +124,6 @@ labels = sorted(list(os.listdir(train_path)))
 
 # plot the confusion matrix
 cm = confusion_matrix(testLabels, preds)
-sns.heatmap(cm,
-            annot=True,
-            cmap="Set2")
+sns.heatmap(cm, annot=True, cmap="gray")   # Set2, jet, gnuplot2
 plt.show()
+
