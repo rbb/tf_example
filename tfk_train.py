@@ -83,19 +83,21 @@ rank_1 = 0
 rank_5 = 0
 
 # loop over test data
+n = 0
+Nmod = 50
 for (label, features) in zip(testLabels, testData):
-  # predict the probability of each class label and
-  # take the top-5 class labels
-  predictions = model.predict_proba(np.atleast_2d(features))[0]
-  predictions = np.argsort(predictions)[::-1][:5]
+    # predict the probability of each class label and
+    # take the top-5 class labels
+    predictions = model.predict_proba(np.atleast_2d(features))[0]
+    predictions = np.argsort(predictions)[::-1][:5]
 
-  # rank-1 prediction increment
-  if label == predictions[0]:
-    rank_1 += 1
+    # rank-1 prediction increment
+    if label == predictions[0]:
+        rank_1 += 1
 
-  # rank-5 prediction increment
-  if label in predictions:
-    rank_5 += 1
+    # rank-5 prediction increment
+    if label in predictions:
+        rank_5 += 1
 
 # convert accuracies to percentages
 rank_1 = (rank_1 / float(len(testLabels))) * 100
