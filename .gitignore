@@ -1,3 +1,10 @@
 *.swp
 README.html
 tfk_output/*
+*.png
+tensorflow/*
+models/*
+bazel*.sh
+dogs-vs-cats*/*
+mobilenet/*
+
