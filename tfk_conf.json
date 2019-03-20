@@ -4,6 +4,7 @@
   "include_top"     : false,
 
   "train_path"      : "dogs-vs-cats/train",
+  "test_path"       : "dogs-vs-cats/test",
   "out_path"        : "tfk_output/dogs-vs-cats/mobilenet-train",
   "features_file"   : "features.h5",
   "labels_file"     : "labels.h5",
@@ -11,6 +12,8 @@
   "classifier_file" : "classifier.pickle",
   "model_file"      : "model",
 
+  "batch_size"      : 75,
+  "img_side_len"    : 224,
   "test_size"       : 0.10,
   "seed"            : 9,
   "num_classes"     : 2
