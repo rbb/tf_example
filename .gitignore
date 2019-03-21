@@ -1,4 +1,5 @@
 *.swp
+*.pyc
 README.html
 tfk_output/*
 *.png
