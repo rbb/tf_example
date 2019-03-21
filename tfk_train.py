@@ -36,7 +36,7 @@ include_top   = config["include_top"]
 train_path    = config["train_path"]
 features_path = ld_conf_path("features_file")
 labels_path   = ld_conf_path("labels_file")
-results_path  = config["results_file"]
+results_path  = ld_conf_path["results_file"]
 model_path    = ld_conf_path("model_file")
 classifier_path = ld_conf_path("classifier_file")
 num_classes    = config["num_classes"]
@@ -86,7 +86,7 @@ del labels
 print ("[INFO] del features, labels; used mem: {}% - ".format(psutil.virtual_memory().percent))
 
 # use logistic regression as the model
-print ("[INFO] creating model...")
+print ("[INFO] training new output layer ...")
 model = LogisticRegression(random_state=seed)
 model.fit(trainData, trainLabels)
 print ("[INFO] created model, used mem: {}% - ".format(psutil.virtual_memory().percent))
@@ -101,10 +101,10 @@ rank_5 = 0
 n = 0
 Nmod = 50
 mod_start = time.time()
-for (label, features) in zip(testLabels, testData):
+for (label, feature) in zip(testLabels, testData):
     # predict the probability of each class label and
     # take the top-5 class labels
-    predictions = model.predict_proba(np.atleast_2d(features))[0]
+    predictions = model.predict_proba(np.atleast_2d(feature))[0]
     predictions = np.argsort(predictions)[::-1][:5]
 
     # rank-1 prediction increment

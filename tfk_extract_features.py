@@ -50,7 +50,7 @@ train_path    = config["train_path"]
 out_path      = config["out_path"]
 features_path = ld_conf_path("features_file")
 labels_path   = ld_conf_path("labels_file")
-results       = config["results_file"]
+#results_path  = ld_conf_path["results_file"]
 model_path    = ld_conf_path("model_file")
 test_size     = config["test_size"]
 
