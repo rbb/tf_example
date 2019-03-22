@@ -47,18 +47,21 @@ def ld_conf_path(f, config=config, opath="out_path"):
 #train_path    = config["train_path"]
 test_path     = config["test_path"]
 seed          = config["seed"]
-#batch_size    = config["batch_size"]
+batch_size    = config["batch_size"]
 img_side_len  = config["img_side_len"]
 out_path      = config["out_path"]
 image_size = (img_side_len, img_side_len)
 image_size_c = (img_side_len, img_side_len, 3)
-batch_size = 5
+#batch_size = 5   # Debug
 
+start = time.time()
 #
 # Load the pre-trained model (without top layer)
 #
-#model = tf.keras.applications.mobilenet_v2.MobileNet(include_top=True, weights='imagenet',
-model = tf.keras.applications.mobilenet.MobileNet(include_top=True, weights='imagenet',
+# TODO: Test depth_multiplier = 1.4, 0.35
+# TODO: Test alpha (width multiplier) 
+#model = tf.keras.applications.mobilenet.MobileNet(include_top=True, weights='imagenet',
+model = tf.keras.applications.MobileNetV2(include_top=True, weights='imagenet',
         input_tensor=tf.keras.layers.Input(shape=image_size_c),
         input_shape=image_size_c)
 
@@ -81,6 +84,9 @@ N_test_labels = test_data.labels.max() +1
 model.compile(loss='categorical_crossentropy',
               optimizer=tf.keras.optimizers.RMSprop(lr=1e-4),
               metrics=['acc'])
+end = time.time()
+delta = end - start
+print ("[INFO] model loaded and compiled in {0:.3f} seconds".format(delta))
 print("[INFO] model compiled, used mem: {}% - ".format(psutil.virtual_memory().percent) )
 
 # Test the model
