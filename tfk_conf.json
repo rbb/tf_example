@@ -1,6 +1,8 @@
 ﻿{
-  "model"           : "mobilenet",
+  "model"           : "inceptionv3",
   "weights"         : "imagenet",
+  "depth_mult"      : 1.0,
+  "width_mult"      : 1.0,
   "include_top"     : false,
 
   "train_path"      : "dogs-vs-cats/train",

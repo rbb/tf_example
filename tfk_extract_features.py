@@ -61,44 +61,35 @@ start = time.time()
 # create the pretrained models
 # check for pretrained weight usage or not
 # check for top layers to be included or not
+defargs = {
+        'include_top': True,
+        'weights': weights }
 if model_name == "vgg16":
-    base_model = VGG16(weights=weights)
+    base_model = VGG16(**defargs)
     model = Model(input=base_model.input, output=base_model.get_layer('fc1').output)
-    image_size = (224, 224)
 elif model_name == "vgg19":
-    base_model = VGG19(weights=weights)
+    base_model = VGG19(**defargs)
     model = Model(input=base_model.input, output=base_model.get_layer('fc1').output)
-    image_size = (224, 224)
 elif model_name == "resnet50":
-    base_model = ResNet50(weights=weights)
+    base_model = ResNet50(**defargs)
     model = Model(input=base_model.input, output=base_model.get_layer('flatten').output)
-    image_size = (224, 224)
 elif model_name == "inceptionv3":
-    base_model = InceptionV3(include_top=include_top, weights=weights, input_tensor=Input(shape=(299,299,3)))
+    base_model = InceptionV3(**defargs)
     model = Model(input=base_model.input, output=base_model.get_layer('custom').output)
-    image_size = (299, 299)
 elif model_name == "inceptionresnetv2":
-    base_model = InceptionResNetV2(include_top=include_top, weights=weights, input_tensor=Input(shape=(299,299,3)))
+    base_model = InceptionResNetV2(**defargs)
     model = Model(input=base_model.input, output=base_model.get_layer('custom').output)
-    image_size = (299, 299)
 elif model_name == "mobilenet":
-    base_model = MobileNet(include_top=include_top, weights=weights, input_tensor=Input(shape=(224,224,3)), input_shape=(224,224,3))
-    #model = Model(input=base_model.input, output=base_model.get_layer('custom').output)
-    #model = Model(input=base_model.input, output=base_model.get_layer('conv_pw_13_relu').output)
+    base_model = MobileNet(**defargs)
     model = Model(input=base_model.input, output=base_model.get_layer(index=-1).output)
-    
-    #base_model.layers.pop()
-    #new_model = Sequential()
-    #new_model.add(base_model)
-    #model.layers[-1].outbound_nodes = []
-    #new_model.add(Dense(num_class, activation='softmax'))
-    image_size = (224, 224)
 elif model_name == "xception":
     base_model = Xception(weights=weights)
     model = Model(input=base_model.input, output=base_model.get_layer('avg_pool').output)
-    image_size = (299, 299)
 else:
-    base_model = None
+    print ("Unknown model_name " +model_name +". No model loaded")
+    exit()
+
+image_size = (model.input_shape[1], model.input_shape[2])
 
 # Freeze the first layers because these contain very basic feature detection
 for layer in model.layers[:10]:

@@ -49,10 +49,7 @@ train_path    = config["train_path"]
 test_path     = config["test_path"]
 seed          = config["seed"]
 batch_size    = config["batch_size"]
-img_side_len  = config["img_side_len"]
 out_path      = config["out_path"]
-image_size = (img_side_len, img_side_len)
-image_size_c = (img_side_len, img_side_len, 3)
 
 
 
@@ -66,6 +63,7 @@ with CustomObjectScope({'relu6': mobilenet.relu6,'DepthwiseConv2D': mobilenet.De
     model = models.load_model(p)
 print("Model loaded from " +p)
 #model.summary()
+image_size = (model.input_shape[1], model.input_shape[2])
 
 end = time.time()
 print('Elapsed time to load model: ' +str(end-start))

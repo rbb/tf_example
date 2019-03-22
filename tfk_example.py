@@ -42,17 +42,21 @@ def ld_conf_path(f, config=config, opath="out_path"):
     return p
 
 # config variables
-#weights       = config["weights"]
+model_name    = config["model"]
+weights       = config["weights"]
+depth_mult    = config["depth_mult"]
+width_mult    = config["width_mult"]
 #include_top   = config["include_top"]
 #train_path    = config["train_path"]
 test_path     = config["test_path"]
 seed          = config["seed"]
 batch_size    = config["batch_size"]
-img_side_len  = config["img_side_len"]
+#img_side_len  = config["img_side_len"]
 out_path      = config["out_path"]
-image_size = (img_side_len, img_side_len)
-image_size_c = (img_side_len, img_side_len, 3)
+#image_size = (img_side_len, img_side_len)
+#image_size_c = (img_side_len, img_side_len, 3)
 #batch_size = 5   # Debug
+model_name = model_name.lower()
 
 start = time.time()
 #
@@ -61,10 +65,38 @@ start = time.time()
 # TODO: Test depth_multiplier = 1.4, 0.35
 # TODO: Test alpha (width multiplier) 
 #model = tf.keras.applications.mobilenet.MobileNet(include_top=True, weights='imagenet',
-model = tf.keras.applications.MobileNetV2(include_top=True, weights='imagenet',
-        input_tensor=tf.keras.layers.Input(shape=image_size_c),
-        input_shape=image_size_c)
+#model = tf.keras.applications.MobileNetV2(include_top=True, weights='imagenet',
+#        input_tensor=tf.keras.layers.Input(shape=image_size_c),
+#        input_shape=image_size_c)
 
+defargs = {
+        'include_top': True,
+        'weights': weights }
+if model_name == "vgg16":
+    model = tf.keras.applications.VGG16(**defargs)
+elif model_name == "vgg19":
+    model = tf.keras.applications.VGG19(**defargs)
+elif model_name == "resnet50":
+    model = tf.keras.applications.ResNet50(**defargs)
+elif model_name == "inceptionresnetv2":
+    model = tf.keras.applications.InceptionResNetV2(**defargs)
+elif model_name == "inceptionv3":
+    model = tf.keras.applications.InceptionV3(**defargs)
+elif model_name == "mobilenet":
+    model = tf.keras.applications.MobileNet(**defargs,
+        depth_multiplier=depth_mult,
+        alpha=width_mult)
+elif model_name == "mobilenetv2":
+    model = tf.keras.applications.MobileNetV2(**defargs,
+        depth_multiplier=depth_mult,
+        alpha=width_mult)
+elif model_name == "xception":
+    model = tf.keras.applications.Xception(**defargs)
+else:
+    print ("Unknown model_name " +model_name +". No model loaded")
+    exit()
+
+image_size = (model.input_shape[1], model.input_shape[2])
  
 # Show a summary of the model. Check the number of trainable parameters
 #model.summary()
