@@ -12,7 +12,7 @@
   "classifier_file" : "classifier.pickle",
   "model_file"      : "model",
 
-  "batch_size"      : 75,
+  "batch_size"      : 100,
   "img_side_len"    : 224,
   "test_size"       : 0.10,
   "seed"            : 9,
