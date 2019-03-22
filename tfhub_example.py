@@ -16,6 +16,9 @@ import time
 import tensorflow as tf
 import tensorflow_hub as hub
 from tensorflow.keras import layers
+#TODO figure out why 'from keras import layers' does not work (layers.Lambda)
+#from keras import models
+#from keras import optimizers
 
 start = time.time()
 
@@ -34,8 +37,8 @@ def classifier(x):
 # Use hub.module to load a mobilenet, and tf.keras.layers.Lambda to wrap it up as a keras layer. 
 IMAGE_SIZE = hub.get_expected_image_size(hub.Module(classifier_url))
 classifier_layer = layers.Lambda(classifier, input_shape = IMAGE_SIZE+[3])
-classifier_model = tf.keras.Sequential([classifier_layer])
-classifier_model.summary()
+model = tf.keras.Sequential([classifier_layer])
+model.summary()
 
 print('Initialize model...')
 # When using Keras, TFHub modules need to be manually initialized.
@@ -53,7 +56,7 @@ print('Testing...')
 cat1 = Image.open('cat_photos/russian_blue/cat1.jpg').resize(IMAGE_SIZE)
 cat1 = np.array(cat1)/255.0
 #cat1.shape
-result = classifier_model.predict(cat1[np.newaxis, ...])
+result = model.predict(cat1[np.newaxis, ...])
 print('result: ' +str(result))
 #result.shape
 
