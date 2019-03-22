@@ -51,6 +51,7 @@ width_mult    = config["width_mult"]
 test_path     = config["test_path"]
 seed          = config["seed"]
 batch_size    = config["batch_size"]
+num_batch     = config["num_batch"]
 #img_side_len  = config["img_side_len"]
 out_path      = config["out_path"]
 #image_size = (img_side_len, img_side_len)
@@ -111,6 +112,8 @@ test_data = test_datagen.flow_from_directory(
         class_mode='sparse',
         shuffle=True)
 N_test_labels = test_data.labels.max() +1
+#print("loaded {} files".format(len(test_data.filenames)))
+#print("loaded {} ".format(test_data.filenames))
 
 # Compile the model
 model.compile(loss='categorical_crossentropy',
@@ -118,25 +121,37 @@ model.compile(loss='categorical_crossentropy',
               metrics=['acc'])
 end = time.time()
 delta = end - start
-print ("[INFO] model loaded and compiled in {0:.3f} seconds".format(delta))
-print("[INFO] model compiled, used mem: {}% - ".format(psutil.virtual_memory().percent) )
+print ("[INFO] model loaded and compiled in {0:.3f} seconds, used mem: {1}%".format(
+    delta, psutil.virtual_memory().percent))
 
 # Test the model
 start = time.time()
 
-for td_batch, td_batch_label in test_data:
-  print("Image batch shape: ", td_batch.shape)
-  print("Label batch shape: ", td_batch_label.shape)
-  break
+results = np.array([])
+labels = np.array([])
+for nb in range(num_batch):
+    for td_batch, td_batch_label in test_data:
+        print("Image batch shape: ", td_batch.shape)
+        print("Label batch shape: ", td_batch_label.shape)
+        print("Batch number: " +str(nb+1) +" of " +str(num_batch))
+        break
 
-results = model.predict(
+    results_batch = model.predict(
         td_batch,
         batch_size=batch_size,
-        steps =1)
+        steps =1) # Note: Keeping steps=1 so that we can retrieve the labels of each batch
+
+    if results.size == 0:
+        results = results_batch
+        labels  = td_batch_label
+    else:
+        results = np.concatenate( (results,results_batch) )
+        labels  = np.concatenate( (labels,td_batch_label) )
+
 end = time.time()
 delta = end - start
-print ("[INFO] evaluation completed in {0:.3f} seconds".format(delta))
-print("[INFO] model trained, used mem: {}% - ".format(psutil.virtual_memory().percent) )
+print ("[INFO] evaluation completed in {0:.3f} seconds, used mem: {1}%".format(
+    delta, psutil.virtual_memory().percent))
  
 # Check Performance
 #
@@ -152,16 +167,17 @@ results_topl = pred_anal.result_top_k(results, L)
 
 print('Scoring Top...')
 lt = pred_anal.label_types(test_data.class_indices )
-accuracy = lt.accuracy( results_top, td_batch_label)
+accuracy = lt.accuracy( results_top, labels)
 print("Top 1 accuracy = {0:.3f}".format(accuracy))
 
-accuracy = lt.accuracy( results_topk, td_batch_label)
+accuracy = lt.accuracy( results_topk, labels)
 print("Top {0} accuracy = {1:.3f}".format(K,accuracy))
 
-accuracy = lt.accuracy( results_topl, td_batch_label)
+accuracy = lt.accuracy( results_topl, labels)
 print("Top {0} accuracy = {1:.3f}".format(L,accuracy))
 
 
 end = time.time()
-print('Elapsed time to classify ' +str(batch_size) +' images: ' +str(end-start))
+print('Elapsed time to classify {} images: {}'.format(
+    num_batch*batch_size, end-start) )
 
