@@ -4,6 +4,10 @@ Building an Image Classifier with Tensorflow, running on a Pi
 Starting with Ubuntu 18.04 to train the neural net, and convert to
 tensorflow-lite, which will run on Raspian Stretch.
 
+# General Dependancies
+
+    pip3 install tensorflow psutil h5py
+
 # Installing TensorFlow on an Older Desktop
 
 ## Things that did not work
