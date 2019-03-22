@@ -45,7 +45,7 @@ class label_types(object):
             p = prediction[n]
             #print("len(p) = {}".format(len(p)))
             l = int(label_ind[n])
-            %print("match n,p,l =" +str((n,p,l)))
+            #print("match n,p,l =" +str((n,p,l)))
             meta_label_list = self.d[self.rev_map[l]] 
             if p.shape == ():
                 retval = np.any(meta_label_list == p)
@@ -73,11 +73,11 @@ def result_top(x):
 def result_top_k(x, k):
     return np.argpartition(x, -k)[:,-k:]
 
-def print_failures():
-    #print('Failures:')
-    #for n in range(cats.shape[0]):
-    #    if cats[n] == 0.0:
-    #        print('Example # ' +str(n) +' classified as ' +str(imagenet_labels[result_top[n]]))
+#def print_failures():
+#    print('Failures:')
+#    for n in range(cats.shape[0]):
+#        if cats[n] == 0.0:
+#            print('Example # ' +str(n) +' classified as ' +str(imagenet_labels[result_top[n]]))
  
 
 def score(top_pred, meta_labels):
