@@ -14,17 +14,20 @@ import imutils
 import json
 import time
 import cv2
+import io
  
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--conf", default='ocv_motion_det_conf.json',
-        help="path to the JSON configuration file")
-args = vars(ap.parse_args())
+        help="path to the JSON configuration file: %(default)s")
+args = ap.parse_args()
  
-# filter warnings, load the configuration and initialize the Dropbox
-# client
+# filter warnings, load the configuration and initialize the Dropbox client
 warnings.filterwarnings("ignore")
-conf = json.load(open(args["conf"]))
+
+print("opening config: " +args.conf)
+#conf = json.load(open(args.conf))
+conf = json.load(io.open(args.conf, 'r', encoding='utf-8-sig'))
 client = None
 
 # check to see if the Dropbox should be used
@@ -43,7 +46,7 @@ rawCapture = PiRGBArray(camera, size=tuple(conf["resolution"]))
  
 # allow the camera to warmup, then initialize the average frame, last
 # uploaded timestamp, and frame motion counter
-print("[INFO] warming up...")
+print("[INFO] warming up for " +str(conf["camera_warmup_time"]) +" seconds")
 time.sleep(conf["camera_warmup_time"])
 avg = None
 lastUploaded = datetime.datetime.now()
@@ -67,8 +70,10 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
         print("[INFO] starting background model...")
         avg = gray.copy().astype("float")
         rawCapture.truncate(0)
+        print("[INFO] done capturing background.")
         continue
  
+    print("[INFO] after continue.")
     # accumulate the weighted average between the current frame and
     # previous frames, then compute the difference between the current
     # frame and running average
@@ -85,57 +90,60 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     cnts = imutils.grab_contours(cnts)
 
     # loop over the contours
+    n_cnts =0
     for c in cnts:
-       # if the contour is too small, ignore it
-      if cv2.contourArea(c) < conf["min_area"]:
-          continue
+        print("[INFO] n_cnts = " +str(n_cnts))
+        # if the contour is too small, ignore it
+        if cv2.contourArea(c) < conf["min_area"]:
+            continue
 
-      # compute the bounding box for the contour, draw it on the frame,
-      # and update the text
-      (x, y, w, h) = cv2.boundingRect(c)
-      cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-      text = "Occupied"
+        # compute the bounding box for the contour, draw it on the frame,
+        # and update the text
+        (x, y, w, h) = cv2.boundingRect(c)
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        text = "Occupied"
 
-    # draw the text and timestamp on the frame
-    ts = timestamp.strftime("%A %d %B %Y %I:%M:%S%p")
-    cv2.putText(frame, "Room Status: {}".format(text), (10, 20),
+        # draw the text and timestamp on the frame
+        ts = timestamp.strftime("%A %d %B %Y %I:%M:%S%p")
+        cv2.putText(frame, "Room Status: {}".format(text), (10, 20),
            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-    cv2.putText(frame, ts, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
+        cv2.putText(frame, ts, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
            0.35, (0, 0, 255), 1)
 
-    # check to see if the room is occupied
-    if text == "Occupied":
-      # check to see if enough time has passed between uploads
-      if (timestamp - lastUploaded).seconds >= conf["min_upload_seconds"]:
-          # increment the motion counter
-         motionCounter += 1
+        # check to see if the room is occupied
+        if text == "Occupied":
+          print("[INFO] Occupied.")
+          # check to see if enough time has passed between uploads
+          if (timestamp - lastUploaded).seconds >= conf["min_upload_seconds"]:
+              # increment the motion counter
+             motionCounter += 1
 
-         # check to see if the number of frames with consistent motion is
-         # high enough
-         if motionCounter >= conf["min_motion_frames"]:
-             # check to see if dropbox sohuld be used
-            if conf["use_dropbox"]:
-                # write the image to temporary file
-               t = TempImage()
-               cv2.imwrite(t.path, frame)
+             # check to see if the number of frames with consistent motion is
+             # high enough
+             if motionCounter >= conf["min_motion_frames"]:
+                 # check to see if dropbox sohuld be used
+                if conf["use_dropbox"]:
+                    # write the image to temporary file
+                   t = TempImage()
+                   cv2.imwrite(t.path, frame)
 
-               # upload the image to Dropbox and cleanup the tempory image
-               print("[UPLOAD] {}".format(ts))
-               path = "/{base_path}/{timestamp}.jpg".format(
-                       base_path=conf["dropbox_base_path"], timestamp=ts)
-               client.files_upload(open(t.path, "rb").read(), path)
-               t.cleanup()
-            #else:
-            # TODO: cv2.imwrite(t.path, frame)
+                   # upload the image to Dropbox and cleanup the tempory image
+                   print("[UPLOAD] {}".format(ts))
+                   path = "/{base_path}/{timestamp}.jpg".format(
+                           base_path=conf["dropbox_base_path"], timestamp=ts)
+                   client.files_upload(open(t.path, "rb").read(), path)
+                   t.cleanup()
+                #else:
+                # TODO: cv2.imwrite(t.path, frame)
 
-            # update the last uploaded timestamp and reset the motion
-            # counter
-            lastUploaded = timestamp
+                # update the last uploaded timestamp and reset the motion
+                # counter
+                lastUploaded = timestamp
+                motionCounter = 0
+
+        # otherwise, the room is not occupied
+        else:
             motionCounter = 0
-
-    # otherwise, the room is not occupied
-    else:
-        motionCounter = 0
 
     # check to see if the frames should be displayed to screen
     if conf["show_video"]:
