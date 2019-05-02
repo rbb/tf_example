@@ -20,12 +20,54 @@ import io
 ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--conf", default='ocv_motion_det_conf.json',
         help="path to the JSON configuration file: %(default)s")
-args = ap.parse_args()
+ap.add_argument("-v", "--verbose", action='store_true', default=False,
+        help="Turn on debug messages")
+
+
+
+args, unknown = ap.parse_known_args()
+
+parser = argparse.ArgumentParser(parents=[ap], add_help=False)
+
+if args.conf is not None:
+    if '.json' in args.conf:
+        print("parsing config: " +args.conf)
+        # The escaping of "\t" in the config file is necesarry as
+        # otherwise Python will try to treat is as the string escape
+        # sequence for ASCII Horizontal Tab when it encounters it
+        # during json.load
+        conf = json.load(io.open(args.conf, 'r', encoding='utf-8-sig'))
+        #conf = json.load(open(args.conf))
+        parser.set_defaults(**conf)
+        [
+            parser.add_argument(arg)
+            for arg in [arg for arg in unknown if arg.startswith('--')]
+            if arg.split('--')[-1] in conf
+        ]
+args = parser.parse_args()
+
+print(args)
+print("unknown: " +str(unknown))
+
+"""
+	"show_video": true,
+	"use_dropbox": false,
+	"dropbox_access_token": "YOUR_DROPBOX_KEY",
+	"dropbox_base_path": "YOUR_DROPBOX_PATH",
+	"min_upload_seconds": 3.0,
+	"min_motion_frames": 8,
+	"camera_warmup_time": 1,
+	"delta_thresh": 5,
+	"resolution": [640, 480],
+	"fps": 16,
+	"min_area": 5000
+"""
  
 # filter warnings, load the configuration and initialize the Dropbox client
 warnings.filterwarnings("ignore")
 
-print("opening config: " +args.conf)
+if args.verbose:
+    print("opening config: " +args.conf)
 #conf = json.load(open(args.conf))
 conf = json.load(io.open(args.conf, 'r', encoding='utf-8-sig'))
 client = None
