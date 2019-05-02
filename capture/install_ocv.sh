@@ -28,3 +28,5 @@ sudo $pm install libjpeg-dev libtiff-dev libjasper-dev libpng-dev
 sudo $pm install libavcodec-dev libavformat-dev libswscale-dev libv4l-dev
 
 sudo $pm install python-pip python-numpy python-dev python-opencv
+
+pip install imutils
