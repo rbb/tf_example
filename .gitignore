@@ -8,4 +8,6 @@ models/*
 bazel*.sh
 dogs-vs-cats*/*
 mobilenet/*
+*.DS_Store
+*.h264
 
