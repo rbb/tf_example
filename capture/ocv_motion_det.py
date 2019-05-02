@@ -15,13 +15,43 @@ import json
 import time
 import cv2
 import io
- 
+
+
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--conf", default='ocv_motion_det_conf.json',
         help="path to the JSON configuration file: %(default)s")
+ap.add_argument("-v", "--verbose", action='store_true', default=False,
+        help="Turn on debug messages")
+ap.add_argument("--show_video", action='store_true', default=False,
+        help="Turn on video")
+ap.add_argument("--dropbox", action='store_true', default=False,
+        help="Store frames to dropbox")
+ap.add_argument("--dropbox_base_path", default='ocv_motion_det/',
+        help="path in dropbox folder for where to store frames: %(default)s")
+ap.add_argument("--min_upload_seconds", default=3.0,
+        help="TODO: %(default)s")
+ap.add_argument("--min_motion_frames", default=4.0,
+        help="TODO: %(default)s")
+ap.add_argument("--camera_warmup_time", default=1.0,
+        help="TODO: %(default)s seconds")
+ap.add_argument("--delta_thresh", default=5,
+        help="TODO: %(default)s")
+ap.add_argument("--min_area", default=5000,
+        help="TODO: %(default)s")
+
+# Camera args
+ap.add_argument("--fps", default=16,
+        help="TODO: %(default)s")
+ap.add_argument("--rotation", default=180,
+        help="TODO: %(default)s")
+ap.add_argument("--exposure_mode", default=None,
+        help="One of [off,auto,night,nightpreview,backlight,spotlight,sports,snow,beach,verylong,fixedfps,antishake,fireworks] default: %(default)s")
+ap.add_argument("--resolution", default=[640,480], nargs=2,
+        help="TODO: %(default)s")
+
 args = ap.parse_args()
- 
+
 # filter warnings, load the configuration and initialize the Dropbox client
 warnings.filterwarnings("ignore")
 
@@ -31,7 +61,7 @@ conf = json.load(io.open(args.conf, 'r', encoding='utf-8-sig'))
 client = None
 
 # check to see if the Dropbox should be used
-if conf["use_dropbox"]:
+if args.dropbox:
     from pyimagesearch.tempimage import TempImage
     import dropbox
     # connect to dropbox and start the session authorization process
@@ -40,14 +70,17 @@ if conf["use_dropbox"]:
 
 # initialize the camera and grab a reference to the raw camera capture
 camera = PiCamera()
-camera.resolution = tuple(conf["resolution"])
-camera.framerate = conf["fps"]
-rawCapture = PiRGBArray(camera, size=tuple(conf["resolution"]))
+camera.rotation = args.rotation
+camera.resolution = tuple(args.resolution)
+camera.framerate = args.fps
+if args.exposure_mode:
+    camera.exposure_mode = args.exposure_mode
+rawCapture = PiRGBArray(camera, size=tuple(args.resolution))
  
 # allow the camera to warmup, then initialize the average frame, last
 # uploaded timestamp, and frame motion counter
-print("[INFO] warming up for " +str(conf["camera_warmup_time"]) +" seconds")
-time.sleep(conf["camera_warmup_time"])
+print("[INFO] warming up for " +str(args.camera_warmup_time) +" seconds")
+time.sleep(args.camera_warmup_time)
 avg = None
 lastUploaded = datetime.datetime.now()
 motionCounter = 0
@@ -73,7 +106,8 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
         print("[INFO] done capturing background.")
         continue
  
-    print("[INFO] after continue.")
+    #print("[INFO] after continue.")
+
     # accumulate the weighted average between the current frame and
     # previous frames, then compute the difference between the current
     # frame and running average
@@ -82,7 +116,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
 
     # threshold the delta image, dilate the thresholded image to fill
     # in holes, then find contours on thresholded image
-    thresh = cv2.threshold(frameDelta, conf["delta_thresh"], 255,
+    thresh = cv2.threshold(frameDelta, args.delta_thresh, 255,
            cv2.THRESH_BINARY)[1]
     thresh = cv2.dilate(thresh, None, iterations=2)
     cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
@@ -94,7 +128,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     for c in cnts:
         print("[INFO] n_cnts = " +str(n_cnts))
         # if the contour is too small, ignore it
-        if cv2.contourArea(c) < conf["min_area"]:
+        if cv2.contourArea(c) < args.min_area:
             continue
 
         # compute the bounding box for the contour, draw it on the frame,
@@ -114,15 +148,15 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
         if text == "Occupied":
           print("[INFO] Occupied.")
           # check to see if enough time has passed between uploads
-          if (timestamp - lastUploaded).seconds >= conf["min_upload_seconds"]:
+          if (timestamp - lastUploaded).seconds >= args.min_upload_seconds:
               # increment the motion counter
              motionCounter += 1
 
              # check to see if the number of frames with consistent motion is
              # high enough
-             if motionCounter >= conf["min_motion_frames"]:
+             if motionCounter >= args.min_motion_frames:
                  # check to see if dropbox sohuld be used
-                if conf["use_dropbox"]:
+                if args.dropbox:
                     # write the image to temporary file
                    t = TempImage()
                    cv2.imwrite(t.path, frame)
@@ -130,7 +164,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
                    # upload the image to Dropbox and cleanup the tempory image
                    print("[UPLOAD] {}".format(ts))
                    path = "/{base_path}/{timestamp}.jpg".format(
-                           base_path=conf["dropbox_base_path"], timestamp=ts)
+                           base_path=args.dropbox_base_path, timestamp=ts)
                    client.files_upload(open(t.path, "rb").read(), path)
                    t.cleanup()
                 #else:
@@ -146,7 +180,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
             motionCounter = 0
 
     # check to see if the frames should be displayed to screen
-    if conf["show_video"]:
+    if args.show_video:
         # display the security feed
         cv2.imshow("Security Feed", frame)
         key = cv2.waitKey(1) & 0xFF
