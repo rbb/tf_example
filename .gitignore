@@ -10,4 +10,5 @@ dogs-vs-cats*/*
 mobilenet/*
 *.DS_Store
 *.h264
+capture/frames/*
 
