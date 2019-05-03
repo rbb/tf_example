@@ -22,6 +22,7 @@ class label_types(object):
             # imagenet classes/labels
             "cat": np.array([281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293]),
             "dog": np.concatenate(np.array(range(151,269)), 275)
+            #"person": np.concatenate(np.array(range(151,269)), 275)
         }
         self.rev_map = {} 
         if class_indices:
@@ -60,6 +61,8 @@ class label_types(object):
         return matches
     def accuracy(self, prediction, label_ind):
         matches = self.match(prediction, label_ind)
+        #print("pred_anal.label_types: matches = ", str(matches))
+        #print("pred_anal.label_types: len(prediction) = ", str(len(prediction)))
         fraction = np.sum(matches) / float(len(prediction))
         return fraction
 
@@ -82,6 +85,7 @@ def result_top_k(x, k):
 
 def score(top_pred, meta_labels):
     N = len(top_pred)
+    print("pred_anal.score: N = ", str(N))
     correct = 0
     for n in range(N):
         for key in meta_labels.keys:
@@ -89,3 +93,4 @@ def score(top_pred, meta_labels):
                 correct += 1
     accuracy = correct / float(N)
     return accuracy
+

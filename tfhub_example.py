@@ -6,6 +6,7 @@
 # https://www.kaggle.com/c/dogs-vs-cats
 # https://www.kaggle.com/c/dogs-vs-cats-redux-kernels-edition/data
 
+import argparse
 
 import tensorflow as tf
 #import matplotlib.pylab as plt
@@ -19,6 +20,24 @@ from tensorflow.keras import layers
 #TODO figure out why 'from keras import layers' does not work (layers.Lambda)
 #from keras import models
 #from keras import optimizers
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-s', '--batch_size', dest='batch_size', action='store',
+        default=200,
+        help='Size of the batch: %(default)s')
+parser.add_argument('-d', '--data_root', dest='data_root', action='store',
+        default='dogs-vs-cats/train',
+        #default='dogs-vs-cats/test',
+        #default='cat_photos',
+        help='directory with the images: %(default)s')
+parser.add_argument('-b', '--boolean', dest='boolean', action='store_false', default=True,
+        help='Boolean flag')
+parser.add_argument('-v', '--verbose', dest='verbose', action='store', default=0,
+        type=int, metavar = 'N',
+        help='Verbosity level. Anything other than 0 for debug info.')
+parser.add_argument('-V', '--verbose_on', dest='verbose_on', action='store_true', 
+        default=False,
+        help='Set Verbosity level N = 1.')
 
 start = time.time()
 
