@@ -17,35 +17,6 @@ import cv2
 import io
 import os
 
-# From: https://stackoverflow.com/questions/17984809/how-do-i-create-a-incrementing-filename-in-python
-def next_path(path_pattern):
-    """
-    Finds the next free path in an sequentially named list of files
-
-    e.g. path_pattern = 'file-%s.txt':
-
-    file-1.txt
-    file-2.txt
-    file-3.txt
-
-    Runs in log(n) time where n is the number of existing files in sequence
-    """
-    i = 1
-
-    # First do an exponential search
-    while os.path.exists(path_pattern % i):
-        i = i * 2
-
-    # Result lies somewhere in the interval (i/2..i]
-    # We call this interval (a..b] and narrow it down until a + 1 = b
-    a, b = (i / 2, i)
-    while a + 1 < b:
-        c = (a + b) / 2 # interval midpoint
-        a, b = (c, b) if os.path.exists(path_pattern % c) else (a, c)
-
-    return path_pattern % b
-
-
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
@@ -67,10 +38,12 @@ ap.add_argument("--camera_warmup_time", default=1.0,
         help="TODO: %(default)s seconds")
 ap.add_argument("--delta_thresh", default=5,
         help="TODO: %(default)s")
-ap.add_argument("--min_area", default=5000,
+ap.add_argument("--min_area", default=500,
         help="TODO: %(default)s")
 ap.add_argument("--out_dir", default="./frames/",
         help="Where to store output frames (those deemed occupied): %(default)s")
+ap.add_argument("--store_local", action='store_true', default=False,
+        help="Store frames locally to out_dir")
 
 # Camera args
 ap.add_argument("--fps", default=16,
@@ -123,6 +96,7 @@ lastUploaded = datetime.datetime.now()
 motionCounter = 0
 
 # capture frames from the camera
+n_frame = 0
 for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
     # grab the raw NumPy array representing the image and initialize
     # the timestamp and occupied/unoccupied text
@@ -131,9 +105,11 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     text = "Unoccupied"
 
     # resize the frame, convert it to grayscale, and blur it
-    frame = imutils.resize(frame, width=500)
+    #frame = imutils.resize(frame, width=500)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (21, 21), 0)
+    if (n_frame%args.fps) == 0:
+        print("[INFO] mean brightness:" +str(gray.mean()) )
     
     # if the average frame is None, initialize it
     if avg is None:
@@ -160,10 +136,11 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
            cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
 
+
     # loop over the contours
-    n_cnts =0
+    conts = []
+    frame_marked = frame.copy()
     for c in cnts:
-        print("[INFO] n_cnts = " +str(n_cnts))
         # if the contour is too small, ignore it
         if cv2.contourArea(c) < args.min_area:
             continue
@@ -171,58 +148,71 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
         # compute the bounding box for the contour, draw it on the frame,
         # and update the text
         (x, y, w, h) = cv2.boundingRect(c)
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        conts.append(frame[y:y + h, x:x + w])
+
+        cv2.rectangle(frame_marked, (x, y), (x + w, y + h), (0, 255, 0), 2)
         text = "Occupied"
 
         # draw the text and timestamp on the frame
         ts = timestamp.strftime("%A %d %B %Y %I:%M:%S%p")
-        cv2.putText(frame, "Room Status: {}".format(text), (10, 20),
-           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-        cv2.putText(frame, ts, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
+        #cv2.putText(frame, "Room Status: {}".format(text), (10, 20),
+        #   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        cv2.putText(frame_marked, ts, (10, frame_marked.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
            0.35, (0, 0, 255), 1)
 
-        # check to see if the room is occupied
-        if text == "Occupied":
-            print("[INFO] Occupied.")
-            # check to see if enough time has passed between uploads
-            if (timestamp - lastUploaded).seconds >= args.min_upload_seconds:
-                # increment the motion counter
-                motionCounter += 1
 
-                # check to see if the number of frames with consistent motion is
-                # high enough
-                if motionCounter >= args.min_motion_frames:
-                    print("[INFO] found motion")
-                    # check to see if dropbox sohuld be used
-                    if args.dropbox:
-                        # write the image to temporary file
-                        t = TempImage()
-                        cv2.imwrite(t.path, frame)
+    # check to see if the room is occupied
+    if text == "Occupied":
+        print("[INFO] " +ts +" found " +str(len(conts))) +" contours in frame."
+        #print("[INFO] Occupied.")
+        # check to see if enough time has passed between uploads
+        if (timestamp - lastUploaded).seconds >= args.min_upload_seconds:
+            # increment the motion counter
+            motionCounter += 1
 
-                        # upload the image to Dropbox and cleanup the tempory image
-                        print("[UPLOAD] {}".format(ts))
-                        path = "/{base_path}/{timestamp}.jpg".format(
-                               base_path=args.dropbox_base_path, timestamp=ts)
-                        client.files_upload(open(t.path, "rb").read(), path)
-                        t.cleanup()
-                    else:
-                        fn = next_path(os.path.join(args.out_dir, 'frame-%s.jpg'))
-                        print("[INFO] writing frame " +str(fn))
-                        cv2.imwrite(fn, frame)
+            # check to see if the number of frames with consistent motion is
+            # high enough
+            if motionCounter >= args.min_motion_frames:
+                print("[INFO] found motion")
+                # check to see if dropbox sohuld be used
+                if args.dropbox:
+                    # write the image to temporary file
+                    t = TempImage()
+                    cv2.imwrite(t.path, frame_marked)
 
-                # update the last uploaded timestamp and reset the motion
-                # counter
-                lastUploaded = timestamp
-                motionCounter = 0
+                    # upload the image to Dropbox and cleanup the tempory image
+                    print("[UPLOAD] {}".format(ts))
+                    path = "/{base_path}/{timestamp}.jpg".format(
+                           base_path=args.dropbox_base_path, timestamp=ts)
+                    client.files_upload(open(t.path, "rb").read(), path)
+                    t.cleanup()
+                if args.store_local:
+                    fts = timestamp.strftime("%Y-%m-%d_%H-%M-%S")
+                    fn = "{out_dir}/{timestamp}_frame.jpg".format(
+                           out_dir=args.out_dir, timestamp=fts)
+                    print("[INFO] writing frame " +str(fn))
+                    cv2.imwrite(fn, frame_marked)
+                    n=1
+                    for c in conts:
+                        cn = "{out_dir}/{timestamp}_cont-{n}.jpg".format(
+                           out_dir=args.out_dir, timestamp=fts, n=n)
+                        print("[INFO] writing contour " +str(cn))
+                        cv2.imwrite(cn, c)
+                        n = n +1
 
-        # otherwise, the room is not occupied
-        else:
+            # update the last uploaded timestamp and reset the motion
+            # counter
+            lastUploaded = timestamp
             motionCounter = 0
+
+    # otherwise, the room is not occupied
+    else:
+        motionCounter = 0
 
     # check to see if the frames should be displayed to screen
     if args.show_video:
         # display the security feed
-        cv2.imshow("Security Feed", frame)
+        cv2.imshow("Security Feed", frame_marked)
         key = cv2.waitKey(1) & 0xFF
 
         # if the `q` key is pressed, break from the lop
