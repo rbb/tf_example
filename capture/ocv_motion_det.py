@@ -7,7 +7,6 @@
 # import the necessary packages
 from picamera.array import PiRGBArray
 from picamera import PiCamera
-import argparse
 import warnings
 import datetime
 import imutils
@@ -16,45 +15,61 @@ import time
 import cv2
 import io
 import os
+import argparse
 
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-c", "--conf", default='ocv_motion_det_conf.json',
+ap.add_argument("-c", "--conf", metavar='STR', default='ocv_motion_det_conf.json',
         help="path to the JSON configuration file: %(default)s")
-ap.add_argument("-v", "--verbose", action='store_true', default=False,
-        help="Turn on debug messages")
 ap.add_argument("--show_video", action='store_true', default=False,
         help="Turn on video")
 ap.add_argument("--dropbox", action='store_true', default=False,
         help="Store frames to dropbox")
-ap.add_argument("--dropbox_base_path", default='ocv_motion_det/',
+ap.add_argument("--dropbox_path", metavar='STR', default='ocv_motion_det/',
         help="path in dropbox folder for where to store frames: %(default)s")
-ap.add_argument("--min_upload_seconds", default=1.0,
-        help="TODO: %(default)s")
-ap.add_argument("--min_motion_frames", default=1,
-        help="TODO: %(default)s")
-ap.add_argument("--camera_warmup_time", default=1.0,
-        help="TODO: %(default)s seconds")
-ap.add_argument("--delta_thresh", default=5,
-        help="TODO: %(default)s")
-ap.add_argument("--min_area", default=500,
-        help="TODO: %(default)s")
-ap.add_argument("--out_dir", default="./frames/",
-        help="Where to store output frames (those deemed occupied): %(default)s")
 ap.add_argument("--store_local", action='store_true', default=False,
         help="Store frames locally to out_dir")
 
-# Camera args
-ap.add_argument("--fps", default=16,
+# Alg args
+gp_alg = ap.add_argument_group('Algorithm Args')
+gp_alg.add_argument("--min_out_seconds", metavar='N', default=2.0,
+        help="Minimum seconds between storing frames (local or dropbox): %(default)s")
+gp_alg.add_argument("--min_motion_frames", metavar='N', default=1,
+        help="Minimum number of frames with motion before looking for contours: %(default)s")
+gp_alg.add_argument("--camera_warmup", metavar='N', default=0.5,
+        help="Seconds to wait for start: %(default)s")
+gp_alg.add_argument("--delta_thresh", metavar='N', default=5,
         help="TODO: %(default)s")
-ap.add_argument("--rotation", default=180,
-        help="TODO: %(default)s")
-ap.add_argument("--exposure_mode", default=None,
-        help="One of [off,auto,night,nightpreview,backlight,spotlight,sports,snow,beach,verylong,fixedfps,antishake,fireworks] default: %(default)s")
-ap.add_argument("--resolution", default=[640,480], nargs=2,
-        help="TODO: %(default)s")
+gp_alg.add_argument("--min_area", metavar='N', default=1000,
+        help="Minimum area that has to change to call it a contour: %(default)s")
+gp_alg.add_argument("--out_dir", metavar='STR', default="./frames/",
+        help="Where to store output frames (those deemed occupied): %(default)s")
 
+# logging args
+gp_log = ap.add_argument_group('Logging Args')
+gpm_log = gp_log.add_mutually_exclusive_group()
+gpm_log.add_argument("--log_en", action='store_true', dest='log_en', 
+        help="log average brightness values true (default)")
+gpm_log.add_argument('--log_dis', action='store_false', dest='log_en',
+        help="log average brightness values false")
+gpm_log.set_defaults(log_en=True)
+gp_log.add_argument("--log_dir", default=".",
+        help="Where to store output log files: %(default)s")
+
+# Camera args
+gp_cam = ap.add_argument_group('Camera Args')
+gp_cam.add_argument("--fps", default=16,
+        help="Video frames per second: %(default)s")
+gp_cam.add_argument("--rotation", metavar='N', default=180,
+        help="Video rotation: %(default)s")
+gp_cam.add_argument("--exposure_mode", metavar='STR', default=None,
+        help="One of [off,auto,night,nightpreview,backlight,spotlight,sports,snow,beach,verylong,fixedfps,antishake,fireworks] default: %(default)s")
+gp_cam.add_argument("--resolution", metavar='N', default=[640,480], nargs=2,
+        help="Video resolution: %(default)s")
+
+ap.add_argument("-v", "--verbose", action='store_true', default=False,
+        help="Turn on debug messages")
 args = ap.parse_args()
 
 # filter warnings, load the configuration and initialize the Dropbox client
@@ -64,6 +79,10 @@ print("opening config: " +args.conf)
 #conf = json.load(open(args.conf))
 conf = json.load(io.open(args.conf, 'r', encoding='utf-8-sig'))
 client = None
+
+if args.log_en:
+    flog = open(os.path.join(args.log_dir,
+        'ocv_motion_det_avg_brightness.csv'),'a+')
 
 # check to see if the Dropbox should be used
 if args.dropbox:
@@ -84,13 +103,22 @@ camera.rotation = args.rotation
 camera.resolution = tuple(args.resolution)
 camera.framerate = args.fps
 if args.exposure_mode:
-    camera.exposure_mode = args.exposure_mode
+    print("[INFO] PiCamera.EXPOSURE_MODES = " +str(PiCamera.EXPOSURE_MODES))
+    print("[INFO] exposure_mode = " +str(camera.exposure_mode))
+    print("[INFO] attempting to set exposer_mode = " +str(args.exposure_mode))
+    camera.exposure_mode = str(args.exposure_mode)
+    print("[INFO] exposure_mode = " +str(camera.exposure_mode))
+
+    # TODO: try manually toggling the LED, which is connected to the IR cut
+    # https://github.com/BigNerd95/CameraLED
+    # https://github.com/ArduCAM/RPI_Motorized_IRCut_Control
+    # or try precompiled binary: http://www.arducam.com/downloads/modules/RaspberryPi_camera/piCamLed.zip
 rawCapture = PiRGBArray(camera, size=tuple(args.resolution))
  
 # allow the camera to warmup, then initialize the average frame, last
 # uploaded timestamp, and frame motion counter
-print("[INFO] warming up for " +str(args.camera_warmup_time) +" seconds")
-time.sleep(args.camera_warmup_time)
+print("[INFO] warming up for " +str(args.camera_warmup) +" seconds")
+time.sleep(args.camera_warmup)
 avg = None
 lastUploaded = datetime.datetime.now()
 motionCounter = 0
@@ -102,6 +130,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     # the timestamp and occupied/unoccupied text
     frame = f.array
     timestamp = datetime.datetime.now()
+    fts = timestamp.strftime("%Y-%m-%d_%H-%M-%S")
     text = "Unoccupied"
 
     # resize the frame, convert it to grayscale, and blur it
@@ -110,6 +139,9 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     gray = cv2.GaussianBlur(gray, (21, 21), 0)
     if (n_frame%args.fps) == 0:
         print("[INFO] mean brightness:" +str(gray.mean()) )
+        if args.log_en:
+            lts = timestamp.strftime("%Y-%m-%d, %H-%M-%S")
+            flog.write(lts +', ' +str(gray.mean()) +'\n')
     
     # if the average frame is None, initialize it
     if avg is None:
@@ -165,10 +197,12 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     if text == "Occupied":
         print("[INFO] " +ts +" found " +str(len(conts))) +" contours in frame."
         #print("[INFO] Occupied.")
+
+        # increment the motion counter
+        motionCounter += 1
+
         # check to see if enough time has passed between uploads
-        if (timestamp - lastUploaded).seconds >= args.min_upload_seconds:
-            # increment the motion counter
-            motionCounter += 1
+        if (timestamp - lastUploaded).seconds >= args.min_out_seconds:
 
             # check to see if the number of frames with consistent motion is
             # high enough
@@ -183,11 +217,10 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
                     # upload the image to Dropbox and cleanup the tempory image
                     print("[UPLOAD] {}".format(ts))
                     path = "/{base_path}/{timestamp}.jpg".format(
-                           base_path=args.dropbox_base_path, timestamp=ts)
+                           base_path=args.dropbox_path, timestamp=ts)
                     client.files_upload(open(t.path, "rb").read(), path)
                     t.cleanup()
                 if args.store_local:
-                    fts = timestamp.strftime("%Y-%m-%d_%H-%M-%S")
                     fn = "{out_dir}/{timestamp}_frame.jpg".format(
                            out_dir=args.out_dir, timestamp=fts)
                     print("[INFO] writing frame " +str(fn))
@@ -203,7 +236,8 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
             # update the last uploaded timestamp and reset the motion
             # counter
             lastUploaded = timestamp
-            motionCounter = 0
+
+        motionCounter = 0
 
     # otherwise, the room is not occupied
     else:
@@ -223,3 +257,5 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     rawCapture.truncate(0)
 
 
+if args.log_en:
+    flog.close()
