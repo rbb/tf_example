@@ -18,6 +18,12 @@ import os
 import argparse
 
 
+# Learn about API authentication here: https://plot.ly/python/getting-started
+# Find your api_key here: https://plot.ly/settings/api
+import plotly.plotly as py
+import plotly.graph_objs as pgo
+
+
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-c", "--conf", metavar='STR', default='ocv_motion_det_conf.json',
@@ -97,6 +103,15 @@ class Avgs():
 #    def print_status(self):
 #        print(clearelf.sum = 0;
 #        self.n = 1
+
+def update_plotly(fname, x, y, auto_open=False):
+    new_data = pgo.Scatter(x=[x], y=[y] )
+    data = pgo.Data( [ new_data ] )
+    plot_url = py.plot(data,
+        filename = fname,
+        fileopt = 'extend',
+        auto_open = auto_open)
+    return plot_url
 
 # filter warnings, load the configuration and initialize the Dropbox client
 warnings.filterwarnings("ignore")
@@ -212,6 +227,14 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
         if args.log_en:
             lts = timestamp.strftime("%Y-%m-%d %H:%M:%S")
             flog.write(lts +', ' +str(agray.avg()) +', ' +str(athresh.avg()) +', ' +str(acnts.avg()) +'\n')
+        if args.plotly:
+            br_url = update_plotly('ocv_motion_det_avg_brightness', last_log_time,
+                    agray.avg())
+            br_url = update_plotly('ocv_motion_det_avg_thresh', last_log_time,
+                    athresh.avg())
+            br_url = update_plotly('ocv_motion_det_avg_cnts', last_log_time,
+                    acnts.avg())
+            print("[INFO] plotly url: " +str(br_url))
         agray.clear()
         athresh.clear()
         acnts.clear()
