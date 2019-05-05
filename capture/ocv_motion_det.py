@@ -24,8 +24,18 @@ ap.add_argument("-c", "--conf", metavar='STR', default='ocv_motion_det_conf.json
         help="path to the JSON configuration file: %(default)s")
 ap.add_argument("--show_video", action='store_true', default=False,
         help="Turn on video")
-ap.add_argument("--dropbox", action='store_true', default=False,
+ap.add_argument('--dropbox', default=False,
+        type=lambda x: (str(x).lower() == 'true'),
         help="Store frames to dropbox")
+ap.add_argument('--plotly', default=True,
+        type=lambda x: (str(x).lower() == 'true'),
+        help="Update plotly graph")
+#gpm_db = gp_log.add_mutually_exclusive_group()
+#gpm_db.add_argument("--dropbox", action='store_true', dest='dropbox',
+#        help="Store frames to dropbox")
+#gpm_db.add_argument("--no-dropbox", action='store_false', dest='dropbox',
+#        help="Do not store frames to dropbox")
+#gpm_log.set_defaults(dropbox=False)
 ap.add_argument("--dropbox_path", metavar='STR', default='ocv_motion_det/',
         help="path in dropbox folder for where to store frames: %(default)s")
 ap.add_argument("--store_local", action='store_true', default=False,
@@ -56,6 +66,8 @@ gpm_log.add_argument('--log_dis', action='store_false', dest='log_en',
 gpm_log.set_defaults(log_en=True)
 gp_log.add_argument("--log_dir", default=".",
         help="Where to store output log files: %(default)s")
+gp_log.add_argument("--log_interval", metavar='N', default="1",
+        help="Seconds between log entries: %(default)s")
 
 # Camera args
 gp_cam = ap.add_argument_group('Camera Args')
@@ -113,6 +125,18 @@ if args.exposure_mode:
     # https://github.com/BigNerd95/CameraLED
     # https://github.com/ArduCAM/RPI_Motorized_IRCut_Control
     # or try precompiled binary: http://www.arducam.com/downloads/modules/RaspberryPi_camera/piCamLed.zip
+
+    # TODO: Try toggling through /sys/
+    # disable_camera_led=1 
+    # in config.txt: the following commands run as root user will switch the led on (or IR cut filter in depending on your camera). 
+    #
+    # $>echo 32 > /sys/class/gpio/export 
+    # $>echo out > /sys/class/gpio/gpio32/direction 
+    # $>echo 1 > /sys/class/gpio/gpio32/value 
+    #
+    # To switch back out again; 
+    # $>echo 0 > /sys/class/gpio/gpio32/value see less 
+
 rawCapture = PiRGBArray(camera, size=tuple(args.resolution))
  
 # allow the camera to warmup, then initialize the average frame, last
@@ -124,7 +148,7 @@ lastUploaded = datetime.datetime.now()
 motionCounter = 0
 
 # capture frames from the camera
-n_frame = 0
+last_log_time = datetime.datetime.now()
 for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
     # grab the raw NumPy array representing the image and initialize
     # the timestamp and occupied/unoccupied text
@@ -137,11 +161,12 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     #frame = imutils.resize(frame, width=500)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (21, 21), 0)
-    if (n_frame%args.fps) == 0:
+    if (timestamp - last_log_time).total_seconds() > args.log_interval:
         print("[INFO] mean brightness:" +str(gray.mean()) )
         if args.log_en:
-            lts = timestamp.strftime("%Y-%m-%d, %H-%M-%S")
+            lts = timestamp.strftime("%Y-%m-%d %H:%M:%S")
             flog.write(lts +', ' +str(gray.mean()) +'\n')
+            last_log_time = datetime.datetime.now()
     
     # if the average frame is None, initialize it
     if avg is None:
