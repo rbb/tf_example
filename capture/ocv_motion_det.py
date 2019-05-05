@@ -34,14 +34,16 @@ ap.add_argument('--dropbox', default=False,
         type=lambda x: (str(x).lower() == 'true'),
         metavar = 'true/false',
         help="Store frames to dropbox. Default: %(default)s")
-ap.add_argument('--plotly', default=True,
+ap.add_argument('--plotly', default=False,
         type=lambda x: (str(x).lower() == 'true'),
         metavar = 'true/false',
         help="Update plotly graph. Default: %(default)s")
 ap.add_argument("--dropbox_path", metavar='STR', default='ocv_motion_det/',
         help="path in dropbox folder for where to store frames: %(default)s")
-ap.add_argument("--store_local", action='store_true', default=False,
-        help="Store frames locally to out_dir")
+ap.add_argument('--local', dest='store_local', default=False,
+        type=lambda x: (str(x).lower() == 'true'),
+        metavar = 'true/false',
+        help="Store frames locally. Default: %(default)s")
 
 # Alg args
 gp_alg = ap.add_argument_group('Algorithm Args')
@@ -67,12 +69,12 @@ gp_log.add_argument('--log', default=True,
         help="Update (local) log of brightness values. Default: %(default)s")
 gp_log.add_argument("--log_dir", default=".",
         help="Where to store output log files: %(default)s")
-gp_log.add_argument("--log_interval", metavar='N', default="1",
+gp_log.add_argument("--log_interval", metavar='N', default="60",
         help="Seconds between log entries: %(default)s")
 
 # Camera args
 gp_cam = ap.add_argument_group('Camera Args')
-gp_cam.add_argument("--fps", default=16,
+gp_cam.add_argument("--fps", default=2,
         help="Video frames per second: %(default)s")
 gp_cam.add_argument("--rotation", metavar='N', default=180,
         help="Video rotation: %(default)s")
@@ -143,6 +145,7 @@ camera = PiCamera()
 camera.rotation = args.rotation
 camera.resolution = tuple(args.resolution)
 camera.framerate = args.fps
+print("[INFO] camera fps = " +str(camera.framerate))
 if args.exposure_mode:
     print("[INFO] PiCamera.EXPOSURE_MODES = " +str(PiCamera.EXPOSURE_MODES))
     print("[INFO] exposure_mode = " +str(camera.exposure_mode))
@@ -222,11 +225,12 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
 
     dt = (timestamp - last_log_time).total_seconds()
     if dt > float(args.log_interval):
-        print("[INFO] mean brightness, thresh, cnts len:" +str(agray.avg()) +', ' +str(athresh.avg()) +', ' +str(acnts.avg()) )
+        print("[INFO] mean brightness, thresh, cnts len: " +str(agray.avg()) +', ' +str(athresh.avg()) +', ' +str(acnts.avg()) )
         last_log_time = datetime.datetime.now()
         if args.log_en:
             lts = timestamp.strftime("%Y-%m-%d %H:%M:%S")
             flog.write(lts +', ' +str(agray.avg()) +', ' +str(athresh.avg()) +', ' +str(acnts.avg()) +'\n')
+            print("[INFO] updated log")
         if args.plotly:
             br_url = update_plotly('ocv_motion_det_avg_brightness', last_log_time,
                     agray.avg())
