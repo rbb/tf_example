@@ -30,3 +30,7 @@ sudo $pm install libavcodec-dev libavformat-dev libswscale-dev libv4l-dev
 sudo $pm install python-pip python-numpy python-dev python-opencv
 
 pip install imutils
+
+# Not OCV, but helps with using the Mac to connect - so the pi's home dir can be
+# mounted in Mac Os.
+sudo $pm install netatalk
