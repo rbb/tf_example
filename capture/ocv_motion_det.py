@@ -79,6 +79,25 @@ ap.add_argument("-v", "--verbose", action='store_true', default=False,
         help="Turn on debug messages")
 args = ap.parse_args()
 
+class Avgs():
+    def __init__(self):
+        self.sum = 0
+        self.n = 1
+    def add(self, val):
+        self.sum += val;
+        self.n += 1
+    def clear(self):
+        self.sum = 0;
+        self.n = 1
+    def avg(self, clear=False):
+        avg = self.sum / self.n
+        if clear:
+            self.clear()
+        return avg
+#    def print_status(self):
+#        print(clearelf.sum = 0;
+#        self.n = 1
+
 # filter warnings, load the configuration and initialize the Dropbox client
 warnings.filterwarnings("ignore")
 
@@ -144,6 +163,9 @@ motionCounter = 0
 
 # capture frames from the camera
 last_log_time = datetime.datetime.now()
+agray = Avgs()
+acnts = Avgs()
+athresh = Avgs()
 for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
     # grab the raw NumPy array representing the image and initialize
     # the timestamp and occupied/unoccupied text
@@ -156,13 +178,8 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     #frame = imutils.resize(frame, width=500)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (21, 21), 0)
-    if (timestamp - last_log_time).total_seconds() > args.log_interval:
-        print("[INFO] mean brightness:" +str(gray.mean()) )
-        if args.log_en:
-            lts = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            flog.write(lts +', ' +str(gray.mean()) +'\n')
-            last_log_time = datetime.datetime.now()
-    
+    agray.add( gray.mean() )
+
     # if the average frame is None, initialize it
     if avg is None:
         print("[INFO] starting background model...")
@@ -171,8 +188,6 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
         print("[INFO] done capturing background.")
         continue
  
-    #print("[INFO] after continue.")
-
     # accumulate the weighted average between the current frame and
     # previous frames, then compute the difference between the current
     # frame and running average
@@ -187,6 +202,19 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
            cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
+    acnts.add( len(cnts))
+    athresh.add( thresh.mean() )
+
+    dt = (timestamp - last_log_time).total_seconds()
+    if dt > float(args.log_interval):
+        print("[INFO] mean brightness, thresh, cnts len:" +str(agray.avg()) +', ' +str(athresh.avg()) +', ' +str(acnts.avg()) )
+        last_log_time = datetime.datetime.now()
+        if args.log_en:
+            lts = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            flog.write(lts +', ' +str(agray.avg()) +', ' +str(athresh.avg()) +', ' +str(acnts.avg()) +'\n')
+        agray.clear()
+        athresh.clear()
+        acnts.clear()
 
 
     # loop over the contours
