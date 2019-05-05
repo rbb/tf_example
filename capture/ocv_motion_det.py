@@ -26,16 +26,12 @@ ap.add_argument("--show_video", action='store_true', default=False,
         help="Turn on video")
 ap.add_argument('--dropbox', default=False,
         type=lambda x: (str(x).lower() == 'true'),
-        help="Store frames to dropbox")
+        metavar = 'true/false',
+        help="Store frames to dropbox. Default: %(default)s")
 ap.add_argument('--plotly', default=True,
         type=lambda x: (str(x).lower() == 'true'),
-        help="Update plotly graph")
-#gpm_db = gp_log.add_mutually_exclusive_group()
-#gpm_db.add_argument("--dropbox", action='store_true', dest='dropbox',
-#        help="Store frames to dropbox")
-#gpm_db.add_argument("--no-dropbox", action='store_false', dest='dropbox',
-#        help="Do not store frames to dropbox")
-#gpm_log.set_defaults(dropbox=False)
+        metavar = 'true/false',
+        help="Update plotly graph. Default: %(default)s")
 ap.add_argument("--dropbox_path", metavar='STR', default='ocv_motion_det/',
         help="path in dropbox folder for where to store frames: %(default)s")
 ap.add_argument("--store_local", action='store_true', default=False,
@@ -58,12 +54,11 @@ gp_alg.add_argument("--out_dir", metavar='STR', default="./frames/",
 
 # logging args
 gp_log = ap.add_argument_group('Logging Args')
-gpm_log = gp_log.add_mutually_exclusive_group()
-gpm_log.add_argument("--log_en", action='store_true', dest='log_en', 
-        help="log average brightness values true (default)")
-gpm_log.add_argument('--log_dis', action='store_false', dest='log_en',
-        help="log average brightness values false")
-gpm_log.set_defaults(log_en=True)
+gp_log.add_argument('--log', default=True,
+        type=lambda x: (str(x).lower() == 'true'),
+        metavar = 'true/false',
+        dest = 'log_en',
+        help="Update (local) log of brightness values. Default: %(default)s")
 gp_log.add_argument("--log_dir", default=".",
         help="Where to store output log files: %(default)s")
 gp_log.add_argument("--log_interval", metavar='N', default="1",
