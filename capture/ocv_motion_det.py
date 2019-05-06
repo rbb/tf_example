@@ -313,6 +313,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
         if args.log_en:
             lts = timestamp.strftime("%Y-%m-%d %H:%M:%S")
             flog.write(lts +', ' +str(agray.avg()) +', ' +row_str +'\n')
+            flog.flush()
             print("[INFO] updated log")
         if args.plotly:
             br_url = update_plotly('ocv_motion_det_avg_brightness', last_log_time,
