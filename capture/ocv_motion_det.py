@@ -89,14 +89,14 @@ args = ap.parse_args()
 
 class Avgs():
     def __init__(self):
-        self.sum = 0
-        self.n = 1
+        self.sum = 0.0
+        self.n = 1.0
     def add(self, val):
         self.sum += val;
-        self.n += 1
+        self.n += 1.0
     def clear(self):
-        self.sum = 0;
-        self.n = 1
+        self.sum = 0.0;
+        self.n = 1.0
     def avg(self, clear=False):
         avg = self.sum / self.n
         if clear:
