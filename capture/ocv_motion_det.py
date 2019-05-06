@@ -55,7 +55,7 @@ gp_alg.add_argument("--camera_warmup", metavar='N', default=0.5,
         help="Seconds to wait for start: %(default)s")
 gp_alg.add_argument("--delta_thresh", metavar='N', default=5,
         help="TODO: %(default)s")
-gp_alg.add_argument("--min_area", metavar='N', default=1000,
+gp_alg.add_argument("--min_area", metavar='N', default=5000,
         help="Minimum area that has to change to call it a contour: %(default)s")
 gp_alg.add_argument("--out_dir", metavar='STR', default="./frames/",
         help="Where to store output frames (those deemed occupied): %(default)s")
