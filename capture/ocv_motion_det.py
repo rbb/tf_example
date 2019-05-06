@@ -319,7 +319,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
         last_log_time = datetime.datetime.now()
         if args.log_en:
             lts = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            flog.write(lts +', ' +str(agray.avg()) +', ' +row_str +'\n')
+            flog.write(lts +', ' +row_str +'\n')
             flog.flush()
             print("[INFO] updated log")
         if args.plotly:
