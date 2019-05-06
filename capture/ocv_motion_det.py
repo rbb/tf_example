@@ -59,6 +59,8 @@ gp_alg.add_argument("--min_area", metavar='N', default=5000,
         help="Minimum area that has to change to call it a contour: %(default)s")
 gp_alg.add_argument("--out_dir", metavar='STR', default="./frames/",
         help="Where to store output frames (those deemed occupied): %(default)s")
+gp_alg.add_argument("--cont_grow", metavar='N', type=int, default="20",
+        help="Number of pixel to grow the contour: %(default)s")
 
 # logging args
 gp_log = ap.add_argument_group('Logging Args')
@@ -236,6 +238,11 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
 
         # Compute the bounding box for the contour, and draw it on the frame
         (x, y, w, h) = cv2.boundingRect(c)
+        if args.cont_grow > 0:
+            x -= args.cont_grow
+            y -= args.cont_grow
+            w += 2*args.cont_grow
+            h += 2*args.cont_grow
         not_small_conts.append(frame[y:y + h, x:x + w])
 
         cv2.rectangle(frame_marked, (x, y), (x + w, y + h), (0, 255, 0), 2)
