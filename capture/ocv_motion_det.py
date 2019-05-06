@@ -182,15 +182,17 @@ motionCounter = 0
 # capture frames from the camera
 last_log_time = datetime.datetime.now()
 agray = Avgs()
-acnts = Avgs()
+aconts = Avgs()
 athresh = Avgs()
+amotion = Avgs()
+amotion_conts = Avgs()
+amotion_area = Avgs()
 for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
     # grab the raw NumPy array representing the image and initialize
     # the timestamp and occupied/unoccupied text
     frame = f.array
     timestamp = datetime.datetime.now()
     fts = timestamp.strftime("%Y-%m-%d_%H-%M-%S")
-    text = "Unoccupied"
 
     # resize the frame, convert it to grayscale, and blur it
     #frame = imutils.resize(frame, width=500)
@@ -220,57 +222,34 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
            cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
-    acnts.add( len(cnts))
     athresh.add( thresh.mean() )
-
-    dt = (timestamp - last_log_time).total_seconds()
-    if dt > float(args.log_interval):
-        print("[INFO] mean brightness, thresh, cnts len: " +str(agray.avg()) +', ' +str(athresh.avg()) +', ' +str(acnts.avg()) )
-        last_log_time = datetime.datetime.now()
-        if args.log_en:
-            lts = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            flog.write(lts +', ' +str(agray.avg()) +', ' +str(athresh.avg()) +', ' +str(acnts.avg()) +'\n')
-            print("[INFO] updated log")
-        if args.plotly:
-            br_url = update_plotly('ocv_motion_det_avg_brightness', last_log_time,
-                    agray.avg())
-            br_url = update_plotly('ocv_motion_det_avg_thresh', last_log_time,
-                    athresh.avg())
-            br_url = update_plotly('ocv_motion_det_avg_cnts', last_log_time,
-                    acnts.avg())
-            print("[INFO] plotly url: " +str(br_url))
-        agray.clear()
-        athresh.clear()
-        acnts.clear()
 
 
     # loop over the contours
-    conts = []
+    found_contours = False
+    not_small_conts = []
     frame_marked = frame.copy()
     for c in cnts:
         # if the contour is too small, ignore it
         if cv2.contourArea(c) < args.min_area:
             continue
 
-        # compute the bounding box for the contour, draw it on the frame,
-        # and update the text
+        # Compute the bounding box for the contour, and draw it on the frame
         (x, y, w, h) = cv2.boundingRect(c)
-        conts.append(frame[y:y + h, x:x + w])
+        not_small_conts.append(frame[y:y + h, x:x + w])
 
         cv2.rectangle(frame_marked, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        text = "Occupied"
+        found_contours = True
 
-        # draw the text and timestamp on the frame
+        # Draw the timestamp on the frame
         ts = timestamp.strftime("%A %d %B %Y %I:%M:%S%p")
-        #cv2.putText(frame, "Room Status: {}".format(text), (10, 20),
-        #   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
         cv2.putText(frame_marked, ts, (10, frame_marked.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
            0.35, (0, 0, 255), 1)
 
 
     # check to see if the room is occupied
-    if text == "Occupied":
-        print("[INFO] " +ts +" found " +str(len(conts))) +" contours in frame."
+    if found_contours:
+        print("[INFO] " +ts +" found " +str(len(not_small_conts))) +" contours in frame."
         #print("[INFO] Occupied.")
 
         # increment the motion counter
@@ -283,6 +262,10 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
             # high enough
             if motionCounter >= args.min_motion_frames:
                 print("[INFO] found motion")
+                amotion.add(1.0)
+                amotion_conts.add(len(not_small_conts))
+                for c in not_small_conts:
+                    amotion_area.add( c.shape[0]*c.shape[1] )
                 # check to see if dropbox sohuld be used
                 if args.dropbox:
                     # write the image to temporary file
@@ -301,7 +284,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
                     print("[INFO] writing frame " +str(fn))
                     cv2.imwrite(fn, frame_marked)
                     n=1
-                    for c in conts:
+                    for c in not_small_conts:
                         cn = "{out_dir}/{timestamp}_cont-{n}.jpg".format(
                            out_dir=args.out_dir, timestamp=fts, n=n)
                         print("[INFO] writing contour " +str(cn))
@@ -317,6 +300,36 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     # otherwise, the room is not occupied
     else:
         motionCounter = 0
+
+    # Logging
+    aconts.add( len(not_small_conts))
+    dt = (timestamp - last_log_time).total_seconds()
+    if dt > float(args.log_interval):
+        row_data = [ agray.avg(), athresh.avg(), aconts.avg(),
+                amotion.avg(), amotion_conts.avg(), amotion_area.avg()]
+        row_str = ', '.join([str(i) for i in row_data])
+        print("[INFO] log data: " +row_str)
+        last_log_time = datetime.datetime.now()
+        if args.log_en:
+            lts = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            flog.write(lts +', ' +str(agray.avg()) +', ' +row_str +'\n')
+            print("[INFO] updated log")
+        if args.plotly:
+            br_url = update_plotly('ocv_motion_det_avg_brightness', last_log_time,
+                    agray.avg())
+            br_url = update_plotly('ocv_motion_det_avg_thresh', last_log_time,
+                    athresh.avg())
+            br_url = update_plotly('ocv_motion_det_avg_cnts', last_log_time,
+                    aconts.avg())
+            br_url = update_plotly('ocv_motion_det_avg_motion', last_log_time,
+                    amotion.avg())
+            print("[INFO] plotly url: " +str(br_url))
+        agray.clear()
+        athresh.clear()
+        aconts.clear()
+        amotion.clear()
+        amotion_conts.clear()
+        amotion_area.clear()
 
     # check to see if the frames should be displayed to screen
     if args.show_video:
