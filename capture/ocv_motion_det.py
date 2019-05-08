@@ -117,6 +117,42 @@ def update_plotly(fname, x, y, auto_open=False):
         auto_open = auto_open)
     return plot_url
 
+#------------------------------------
+# From https://gist.github.com/rwb27/a23808e9f4008b48de95692a38ddaa08/#file-set_picamera_gain-py
+from picamera import mmal, mmalobj, exc
+from picamera.mmalobj import to_rational
+
+
+MMAL_PARAMETER_ANALOG_GAIN = mmal.MMAL_PARAMETER_GROUP_CAMERA + 0x59
+MMAL_PARAMETER_DIGITAL_GAIN = mmal.MMAL_PARAMETER_GROUP_CAMERA + 0x5A
+
+def set_gain(camera, gain, value):
+    """Set the analog gain of a PiCamera.
+
+    camera: the picamera.PiCamera() instance you are configuring
+    gain: either MMAL_PARAMETER_ANALOG_GAIN or MMAL_PARAMETER_DIGITAL_GAIN
+    value: a numeric value that can be converted to a rational number.
+    """
+    if gain not in [MMAL_PARAMETER_ANALOG_GAIN, MMAL_PARAMETER_DIGITAL_GAIN]:
+        raise ValueError("The gain parameter was not valid")
+    ret = mmal.mmal_port_parameter_set_rational(camera._camera.control._port, 
+                                                    gain,
+                                                    to_rational(value))
+    if ret == 4:
+        raise exc.PiCameraMMALError(ret, "Are you running the latest version of the userland libraries? Gain setting was introduced in late 2017.")
+    elif ret != 0:
+        raise exc.PiCameraMMALError(ret)
+
+def set_analog_gain(camera, value):
+    """Set the gain of a PiCamera object to a given value."""
+    set_gain(camera, MMAL_PARAMETER_ANALOG_GAIN, value)
+
+def set_digital_gain(camera, value):
+    """Set the digital gain of a PiCamera object to a given value."""
+    set_gain(camera, MMAL_PARAMETER_DIGITAL_GAIN, value)
+
+#---------------------------------
+
 BGR_RED = (0,0,255)
 BGR_GREEN = (0,255,0)
 
@@ -150,6 +186,7 @@ camera = PiCamera()
 camera.rotation = args.rotation
 camera.resolution = tuple(args.resolution)
 camera.framerate = args.fps
+
 print("[INFO] camera fps = " +str(camera.framerate))
 if args.exposure_mode:
     print("[INFO] PiCamera.EXPOSURE_MODES = " +str(PiCamera.EXPOSURE_MODES))
@@ -360,6 +397,29 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
         # if the `q` key is pressed, break from the lop
         if key == ord("q"):
             break
+
+    if key == ord("a"):
+        ag = camera.analog_gain
+        set_analog_gain(camera, ag+1)
+        print("Changing analog gain from " +str(ag) +" to " +str(ag+1))
+    if key == ord("s"):
+        ag = camera.analog_gain
+        set_analog_gain(camera, camera.analog_gain -1)
+        print("Changing analog gain from " +str(ag) +" to " +str(ag-1))
+    if key == ord("z"):
+        new_dg = camera.digital_gain +1
+        set_digital_gain(camera, new_dg)
+        print("Changing digital gain to " +str(new_dg))
+    if key == ord("x"):
+        new_dg = camera.digital_gain -1
+        set_digital_gain(camera, new_dg)
+        print("Changing digital gain to " +str(new_dg))
+    if key == ord("n"):
+        if camera.exposure_mode != "night":
+            camera.exposure_mode = "night"
+        else
+            camera.exposure_mode = "auto"
+        print("Changing digital gain to " +str(camera.exposure_mode))
 
     # clear the stream in preparation for the next frame
     rawCapture.truncate(0)
