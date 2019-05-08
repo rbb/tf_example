@@ -117,6 +117,9 @@ def update_plotly(fname, x, y, auto_open=False):
         auto_open = auto_open)
     return plot_url
 
+BGR_RED = (0,0,255)
+BGR_GREEN = (0,255,0)
+
 # filter warnings, load the configuration and initialize the Dropbox client
 warnings.filterwarnings("ignore")
 
@@ -231,6 +234,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     found_contours = False
     not_small_conts = []
     frame_marked = frame.copy()
+    n_not_small = 0
     for c in cnts:
         # if the contour is too small, ignore it
         if cv2.contourArea(c) < args.min_area:
@@ -243,15 +247,23 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
             y -= args.cont_grow
             w += 2*args.cont_grow
             h += 2*args.cont_grow
+        n_not_small += 1
         not_small_conts.append(frame[y:y + h, x:x + w])
 
-        cv2.rectangle(frame_marked, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        # Draw contour
+        cv2.rectangle(frame_marked, (x, y), (x + w, y + h), BGR_GREEN, 2)
         found_contours = True
+
+        # Draw contour number
+        print("[INFO] contour " +str(n_not_small) +" in BGR_GREEN")
+        cv2.putText(frame_marked, str(n_not_small),
+            (x +3 , y +h -10), cv2.FONT_HERSHEY_SIMPLEX,
+            0.35, BGR_GREEN, 1)
 
         # Draw the timestamp on the frame
         ts = timestamp.strftime("%A %d %B %Y %I:%M:%S%p")
         cv2.putText(frame_marked, ts, (10, frame_marked.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
-           0.35, (0, 0, 255), 1)
+            0.35, BGR_RED, 1)
 
 
     # check to see if the room is occupied
