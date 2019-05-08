@@ -281,9 +281,18 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
         (x, y, w, h) = cv2.boundingRect(c)
         if args.cont_grow > 0:
             x -= args.cont_grow
+            if x < 0:
+                x = 0
+                w += args.cont_grow
+            else:
+                w += 2*args.cont_grow
             y -= args.cont_grow
-            w += 2*args.cont_grow
-            h += 2*args.cont_grow
+            if y < 0:
+                y = 0
+                h += args.cont_grow
+            else:
+                h += 2*args.cont_grow
+            
         n_not_small += 1
         not_small_conts.append(frame[y:y + h, x:x + w])
 
@@ -414,12 +423,27 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
         new_dg = camera.digital_gain -1
         set_digital_gain(camera, new_dg)
         print("Changing digital gain to " +str(new_dg))
-    if key == ord("n"):
-        if camera.exposure_mode != "night":
+    if key == ord("i"):
+        if camera.iso == 0: # Auto
+            camera.iso = 100
+        elif camera.iso == 100:
+            camera.iso = 200
+        elif camera.iso == 200:
+            camera.iso = 400
+        elif camera.iso == 400:
+            camera.iso = 800
+        elif camera.iso == 800:
+            camera.iso = 0 # Auto
+        # TODO use 320, 500, 640 if necessary
+        print("Changing ISO to " +str(camera.iso))
+    if key == ord("m"):
+        if camera.exposure_mode == "auto":
             camera.exposure_mode = "night"
-        else
+        elif camera.exposure_mode == "night":
+            camera.exposure_mode = "off"
+        elif camera.exposure_mode == "off":
             camera.exposure_mode = "auto"
-        print("Changing digital gain to " +str(camera.exposure_mode))
+        print("Changing exposure mode to " +str(camera.exposure_mode))
 
     # clear the stream in preparation for the next frame
     rawCapture.truncate(0)
