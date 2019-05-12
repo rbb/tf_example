@@ -76,7 +76,7 @@ gp_log.add_argument("--log_interval", metavar='N', default="60",
 
 # Camera args
 gp_cam = ap.add_argument_group('Camera Args')
-gp_cam.add_argument("--fps", default=2,
+gp_cam.add_argument("--fps", default=5,
         help="Video frames per second: %(default)s")
 gp_cam.add_argument("--rotation", metavar='N', default=180,
         help="Video rotation: %(default)s")
@@ -153,8 +153,13 @@ def set_digital_gain(camera, value):
 
 #---------------------------------
 
+BGR_WHITE = (255,255,255)
 BGR_RED = (0,0,255)
 BGR_GREEN = (0,255,0)
+
+import socket
+#print(socket.gethostname())
+hostname = socket.gethostname()
 
 # filter warnings, load the configuration and initialize the Dropbox client
 warnings.filterwarnings("ignore")
@@ -217,9 +222,17 @@ rawCapture = PiRGBArray(camera, size=tuple(args.resolution))
 # uploaded timestamp, and frame motion counter
 print("[INFO] warming up for " +str(args.camera_warmup) +" seconds")
 time.sleep(args.camera_warmup)
-avg = None
+frame_avg = None
 lastUploaded = datetime.datetime.now()
 motionCounter = 0
+
+SHOW_TXT = ["Frame", "Gray", "Frame Avg", "Delta", "Threshold"]
+SHOW_FRAME = 0
+SHOW_GRAY = 1
+SHOW_FRAME_AVG = 2
+SHOW_DELTA = 3
+SHOW_THRESH = 4
+show_img = SHOW_FRAME
 
 # capture frames from the camera
 last_log_time = datetime.datetime.now()
@@ -243,9 +256,9 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     agray.add( gray.mean() )
 
     # if the average frame is None, initialize it
-    if avg is None:
+    if frame_avg is None:
         print("[INFO] starting background model...")
-        avg = gray.copy().astype("float")
+        frame_avg = gray.copy().astype("float")
         rawCapture.truncate(0)
         print("[INFO] done capturing background.")
         continue
@@ -253,8 +266,9 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     # accumulate the weighted average between the current frame and
     # previous frames, then compute the difference between the current
     # frame and running average
-    cv2.accumulateWeighted(gray, avg, 0.5)
-    frameDelta = cv2.absdiff(gray, cv2.convertScaleAbs(avg))
+    cv2.accumulateWeighted(gray, frame_avg, 0.5)
+    frame_avg_int8 = cv2.convertScaleAbs(frame_avg)
+    frameDelta = cv2.absdiff(gray, frame_avg_int8)
 
     # threshold the delta image, dilate the thresholded image to fill
     # in holes, then find contours on thresholded image
@@ -308,7 +322,7 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
 
         # Draw the timestamp on the frame
         ts = timestamp.strftime("%A %d %B %Y %I:%M:%S%p")
-        cv2.putText(frame_marked, ts, (10, frame_marked.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
+        cv2.putText(frame_marked, ts, (10, frame_marked.shape[0] - 8), cv2.FONT_HERSHEY_SIMPLEX,
             0.35, BGR_RED, 1)
 
 
@@ -399,51 +413,78 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
 
     # check to see if the frames should be displayed to screen
     if args.show_video:
-        # display the security feed
-        cv2.imshow("Security Feed", frame_marked)
+        if show_img == SHOW_THRESH:
+            img = thresh.copy()
+        elif show_img == SHOW_FRAME_AVG:
+            img = frame_avg_int8.copy()
+        elif show_img == SHOW_GRAY:
+            img = gray.copy()
+        elif show_img == SHOW_DELTA:
+            img = frameDelta.copy()
+        else:
+            img = frame_marked.copy()
+        cv2.putText(img, SHOW_TXT[show_img], (10, frame_marked.shape[0] - 20),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.35, BGR_WHITE, 1)
+        cv2.imshow(hostname, img)
+
+
         key = cv2.waitKey(1) & 0xFF
 
         # if the `q` key is pressed, break from the lop
         if key == ord("q"):
             break
 
-    if key == ord("a"):
-        ag = camera.analog_gain
-        set_analog_gain(camera, ag+1)
-        print("Changing analog gain from " +str(ag) +" to " +str(ag+1))
-    if key == ord("s"):
-        ag = camera.analog_gain
-        set_analog_gain(camera, camera.analog_gain -1)
-        print("Changing analog gain from " +str(ag) +" to " +str(ag-1))
-    if key == ord("z"):
-        new_dg = camera.digital_gain +1
-        set_digital_gain(camera, new_dg)
-        print("Changing digital gain to " +str(new_dg))
-    if key == ord("x"):
-        new_dg = camera.digital_gain -1
-        set_digital_gain(camera, new_dg)
-        print("Changing digital gain to " +str(new_dg))
-    if key == ord("i"):
-        if camera.iso == 0: # Auto
-            camera.iso = 100
-        elif camera.iso == 100:
-            camera.iso = 200
-        elif camera.iso == 200:
-            camera.iso = 400
-        elif camera.iso == 400:
-            camera.iso = 800
-        elif camera.iso == 800:
-            camera.iso = 0 # Auto
-        # TODO use 320, 500, 640 if necessary
-        print("Changing ISO to " +str(camera.iso))
-    if key == ord("m"):
-        if camera.exposure_mode == "auto":
-            camera.exposure_mode = "night"
-        elif camera.exposure_mode == "night":
-            camera.exposure_mode = "off"
-        elif camera.exposure_mode == "off":
-            camera.exposure_mode = "auto"
-        print("Changing exposure mode to " +str(camera.exposure_mode))
+        elif key == ord("v"):
+            frame_avg = None
+            print("Resetting frame_avg")
+
+        elif key == ord("t"):
+            show_img += 1
+            if show_img > SHOW_THRESH:
+                show_img = 0
+            print("Switching view to " +str(show_img) +" = " +SHOW_TXT[show_img])
+
+        elif key == ord("a"):
+            ag = camera.analog_gain
+            set_analog_gain(camera, ag+1)
+            print("Changing analog gain from " +str(ag) +" to " +str(ag+1))
+        elif key == ord("s"):
+            ag = camera.analog_gain
+            set_analog_gain(camera, camera.analog_gain -1)
+            print("Changing analog gain from " +str(ag) +" to " +str(ag-1))
+
+        elif key == ord("z"):
+            new_dg = camera.digital_gain +1
+            set_digital_gain(camera, new_dg)
+            print("Changing digital gain to " +str(new_dg))
+        elif key == ord("x"):
+            new_dg = camera.digital_gain -1
+            set_digital_gain(camera, new_dg)
+            print("Changing digital gain to " +str(new_dg))
+
+        elif key == ord("i"):
+            if camera.iso == 0: # Auto
+                camera.iso = 100
+            elif camera.iso == 100:
+                camera.iso = 200
+            elif camera.iso == 200:
+                camera.iso = 400
+            elif camera.iso == 400:
+                camera.iso = 800
+            elif camera.iso == 800:
+                camera.iso = 0 # Auto
+            # TODO use 320, 500, 640 if necessary
+            print("Changing ISO to " +str(camera.iso))
+
+        elif key == ord("m"):
+            if camera.exposure_mode == "auto":
+                camera.exposure_mode = "night"
+            elif camera.exposure_mode == "night":
+                camera.exposure_mode = "off"
+            elif camera.exposure_mode == "off":
+                camera.exposure_mode = "auto"
+            print("Changing exposure mode to " +str(camera.exposure_mode))
 
     # clear the stream in preparation for the next frame
     rawCapture.truncate(0)
