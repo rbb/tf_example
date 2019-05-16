@@ -256,6 +256,8 @@ amotion = Avgs()
 amotion_conts = Avgs()
 amotion_area = Avgs()
 
+# raw picamera to np examples
+# https://picamera.readthedocs.io/en/release-1.12/recipes2.html
 
 
 if args.webcam:
