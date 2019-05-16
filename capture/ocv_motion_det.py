@@ -16,7 +16,10 @@ import cv2
 import io
 import os
 import argparse
+import numpy as np
 
+# sudo modprobe bcm2835-v4l2
+# will load a V4L2 driver for the Pi camera module, and then everything that works for your webcam should work on the Pi camera.
 
 # Learn about API authentication here: https://plot.ly/python/getting-started
 # Find your api_key here: https://plot.ly/settings/api
@@ -84,6 +87,9 @@ gp_cam.add_argument("--exposure_mode", metavar='STR', default=None,
         help="One of [off,auto,night,nightpreview,backlight,spotlight,sports,snow,beach,verylong,fixedfps,antishake,fireworks] default: %(default)s")
 gp_cam.add_argument("--resolution", metavar='N', default=[640,480], nargs=2,
         help="Video resolution: %(default)s")
+
+ap.add_argument("--webcam", action='store_true', default=False,
+        help="Use webcam instead of Pi Camera")
 
 ap.add_argument("-v", "--verbose", action='store_true', default=False,
         help="Turn on debug messages")
@@ -187,41 +193,48 @@ if not os.path.isdir(args.out_dir):
     os.makedirs(args.out_dir)
 
 # initialize the camera and grab a reference to the raw camera capture
-camera = PiCamera()
-camera.rotation = args.rotation
-camera.resolution = tuple(args.resolution)
-camera.framerate = args.fps
+if not args.webcam:
+    camera = PiCamera()
+    camera.rotation = args.rotation
+    camera.resolution = tuple(args.resolution)
+    camera.framerate = args.fps
 
-print("[INFO] camera fps = " +str(camera.framerate))
-if args.exposure_mode:
-    print("[INFO] PiCamera.EXPOSURE_MODES = " +str(PiCamera.EXPOSURE_MODES))
-    print("[INFO] exposure_mode = " +str(camera.exposure_mode))
-    print("[INFO] attempting to set exposer_mode = " +str(args.exposure_mode))
-    camera.exposure_mode = str(args.exposure_mode)
-    print("[INFO] exposure_mode = " +str(camera.exposure_mode))
+    print("[INFO] camera fps = " +str(camera.framerate))
+    if args.exposure_mode:
+        print("[INFO] PiCamera.EXPOSURE_MODES = " +str(PiCamera.EXPOSURE_MODES))
+        print("[INFO] exposure_mode = " +str(camera.exposure_mode))
+        print("[INFO] attempting to set exposer_mode = " +str(args.exposure_mode))
+        camera.exposure_mode = str(args.exposure_mode)
+        print("[INFO] exposure_mode = " +str(camera.exposure_mode))
 
-    # TODO: try manually toggling the LED, which is connected to the IR cut
-    # https://github.com/BigNerd95/CameraLED
-    # https://github.com/ArduCAM/RPI_Motorized_IRCut_Control
-    # or try precompiled binary: http://www.arducam.com/downloads/modules/RaspberryPi_camera/piCamLed.zip
+        # TODO: try manually toggling the LED, which is connected to the IR cut
+        # https://github.com/BigNerd95/CameraLED
+        # https://github.com/ArduCAM/RPI_Motorized_IRCut_Control
+        # or try precompiled binary: http://www.arducam.com/downloads/modules/RaspberryPi_camera/piCamLed.zip
 
-    # TODO: Try toggling through /sys/
-    # disable_camera_led=1 
-    # in config.txt: the following commands run as root user will switch the led on (or IR cut filter in depending on your camera). 
-    #
-    # $>echo 32 > /sys/class/gpio/export 
-    # $>echo out > /sys/class/gpio/gpio32/direction 
-    # $>echo 1 > /sys/class/gpio/gpio32/value 
-    #
-    # To switch back out again; 
-    # $>echo 0 > /sys/class/gpio/gpio32/value see less 
+        # TODO: Try toggling through /sys/
+        # disable_camera_led=1
+        # in config.txt: the following commands run as root user will switch the led on (or IR cut filter in depending on your camera).
+        #
+        # $>echo 32 > /sys/class/gpio/export
+        # $>echo out > /sys/class/gpio/gpio32/direction
+        # $>echo 1 > /sys/class/gpio/gpio32/value
+        #
+        # To switch back out again;
+        # $>echo 0 > /sys/class/gpio/gpio32/value see less
 
-rawCapture = PiRGBArray(camera, size=tuple(args.resolution))
+    rawCapture = PiRGBArray(camera, size=tuple(args.resolution))
+    #npsize = (args.resolution[0]* args.resolution[1]* 3)
+    npsize = (args.resolution[0]* args.resolution[1]* 3)
+    #output = np.empty((112 * 128 * 3,), dtype=np.uint8)
+    rawCaptureNp = np.empty(npsize, dtype=np.uint8)
  
-# allow the camera to warmup, then initialize the average frame, last
-# uploaded timestamp, and frame motion counter
-print("[INFO] warming up for " +str(args.camera_warmup) +" seconds")
-time.sleep(args.camera_warmup)
+    # allow the camera to warmup, then initialize the average frame, last
+    # uploaded timestamp, and frame motion counter
+    print("[INFO] warming up for " +str(args.camera_warmup) +" seconds")
+    #camera.start_preview()
+    time.sleep(args.camera_warmup)
+
 frame_avg = None
 lastUploaded = datetime.datetime.now()
 motionCounter = 0
@@ -234,7 +247,7 @@ SHOW_DELTA = 3
 SHOW_THRESH = 4
 show_img = SHOW_FRAME
 
-# capture frames from the camera
+# Initialize logging values
 last_log_time = datetime.datetime.now()
 agray = Avgs()
 aconts = Avgs()
@@ -242,10 +255,38 @@ athresh = Avgs()
 amotion = Avgs()
 amotion_conts = Avgs()
 amotion_area = Avgs()
-for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-    # grab the raw NumPy array representing the image and initialize
-    # the timestamp and occupied/unoccupied text
-    frame = f.array
+
+
+
+if args.webcam:
+    cam = cv2.VideoCapture(0)
+else:
+    rawStream = io.BytesIO() # Create the in-memory stream
+    #camera.start_recording()
+
+#for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+while True:
+
+    # capture frames from the camera
+    if args.webcam:
+        ret_val, frame = cam.read()
+    else:
+        camera.capture(rawStream, format='jpeg', use_video_port=True)
+        # Construct a numpy array from the stream
+        data = np.fromstring(rawStream.getvalue(), dtype=np.uint8)
+        # "Decode" the image from the array, preserving colour
+        frame = cv2.imdecode(data, 1)
+
+        camera.capture(rawCaptureNp, format='bgr', use_video_port=True)
+        frame = rawCaptureNp.reshape((args.resolution[1], args.resolution[0], 3))
+        #frame = cv2.imdecode(rawCaptureNp, 1)
+        #frame = rawCapture
+
+        #f = camera.capture_continuous(rawCapture, format="bgr", use_video_port=True)
+        ## grab the raw NumPy array representing the image and initialize
+        ## the timestamp and occupied/unoccupied text
+        #frame = f.array
+
     timestamp = datetime.datetime.now()
     fts = timestamp.strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -259,7 +300,8 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
     if frame_avg is None:
         print("[INFO] starting background model...")
         frame_avg = gray.copy().astype("float")
-        rawCapture.truncate(0)
+        #if not args.webcam:
+        #    rawCapture.truncate(0)
         print("[INFO] done capturing background.")
         continue
  
@@ -487,8 +529,12 @@ for f in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True
             print("Changing exposure mode to " +str(camera.exposure_mode))
 
     # clear the stream in preparation for the next frame
-    rawCapture.truncate(0)
+    #if not args.webcam:
+    #    rawCapture.truncate(0)
 
+
+if args.show_video:
+    cv2.destroyAllWindows()
 
 if args.log_en:
     flog.close()
