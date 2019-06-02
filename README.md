@@ -1,5 +1,5 @@
-Building an Image Classifier with Tensorflow, running on a Pi
-==============================================================
+Building an Image Classifier with Tensorflow, running on a Pi or older CPUs
+===========================================================================
 
 Starting with Ubuntu 18.04 to train the neural net, and convert to
 tensorflow-lite, which will run on Raspian Stretch.
@@ -10,7 +10,7 @@ tensorflow-lite, which will run on Raspian Stretch.
 
 # Installing TensorFlow on an Older Desktop
 
-## Things that did not work
+## Things that did **not** work
 
 ### Installing with pip
 Installing with pip completes, but on old hardware, this fails to run.
