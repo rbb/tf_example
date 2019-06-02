@@ -11,10 +11,11 @@ import io
 import json
 #import pickle
 #import seaborn as sns
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import psutil
 import time
 import pickle
+import argparse
 
 #from sklearn.metrics import classification_report
 #from sklearn.model_selection import train_test_split
@@ -32,32 +33,74 @@ import tensorflow as tf
 #from keras.applications.mobilenet import MobileNet, preprocess_input
 import pred_anal
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--model', default='mobilenet',
+        help='vgg19, resnet50, inceptionresnetv2, inceptionv3, mobilenet, '
+        +'mobilenetv2, xception: %(default)s')
+parser.add_argument('--weights', default='imagenet',
+        help='imagenet, etc: %(default)s')
+parser.add_argument('--depth_mult', type=int, default=1,
+        help='only affexts mobilenet and mobilenetv2: %(default)s')
+parser.add_argument('--width_mult', type=int, default=1,
+        help='only affexts mobilenet and mobilenetv2, alpha parameter: %(default)s')
+
+
+
+parser.add_argument('-s', '--batch_size', action='store',
+        default=10,
+        help='Size of the batch: %(default)s')
+parser.add_argument('--num_batch', action='store',
+        default=10,
+        help='Size of the batch: %(default)s')
+
+#parser.add_argument('-o', '--out_path', action='store',
+#        default='./tfk_output/dogs-vs-cats/mobilenet-train',
+#        help='directory with the images: %(default)s')
+#parser.add_argument('--train_path', action='store',
+#        default='./dogs-vs-cats/train',
+#        help='directory with the images: %(default)s')
+parser.add_argument('--test_path', action='store',
+        default='./dogs-vs-cats/test',
+        help='directory with the images: %(default)s')
+
+parser.add_argument('-v', '--verbose', dest='verbose', action='store', default=0,
+        type=int, metavar = 'N',
+        help='Verbosity level. Anything other than 0 for debug info.')
+parser.add_argument('-V', '--verbose_on', dest='verbose_on', action='store_true', 
+        default=False,
+        help='Set Verbosity level N = 1.')
+args = parser.parse_args()
+if args.verbose_on:
+    args.verbose = max(1, args.verbose)
+
 #
 # load the user configs
 # 
-config = json.load(io.open('tfk_conf.json', 'r', encoding='utf-8-sig'))
+#config = json.load(io.open('tfk_conf.json', 'r', encoding='utf-8-sig'))
 
-def ld_conf_path(f, config=config, opath="out_path"):
-    p = os.path.join(config[opath], config[f])
-    return p
+#def ld_conf_path(f, config=config, opath="out_path"):
+#    p = os.path.join(config[opath], config[f])
+#    return p
 
 # config variables
-model_name    = config["model"]
-weights       = config["weights"]
-depth_mult    = config["depth_mult"]
-width_mult    = config["width_mult"]
+#model_name    = config["model"]
+#weights       = config["weights"]
+#depth_mult    = config["depth_mult"]
+#width_mult    = config["width_mult"]
 #include_top   = config["include_top"]
 #train_path    = config["train_path"]
-test_path     = config["test_path"]
-seed          = config["seed"]
-batch_size    = config["batch_size"]
-num_batch     = config["num_batch"]
+#test_path     = config["test_path"]
+#seed          = config["seed"]
+#batch_size    = config["batch_size"]
+#num_batch     = config["num_batch"]
+
 #img_side_len  = config["img_side_len"]
-out_path      = config["out_path"]
+#out_path      = config["out_path"]
 #image_size = (img_side_len, img_side_len)
 #image_size_c = (img_side_len, img_side_len, 3)
 #batch_size = 5   # Debug
-model_name = model_name.lower()
+model_name = args.model.lower()
 
 start = time.time()
 #
@@ -67,12 +110,13 @@ start = time.time()
 # TODO: Test alpha (width multiplier) 
 #model = tf.keras.applications.mobilenet.MobileNet(include_top=True, weights='imagenet',
 #model = tf.keras.applications.MobileNetV2(include_top=True, weights='imagenet',
+
 #        input_tensor=tf.keras.layers.Input(shape=image_size_c),
 #        input_shape=image_size_c)
 
 defargs = {
         'include_top': True,
-        'weights': weights }
+        'weights': args.weights }
 if model_name == "vgg16":
     model = tf.keras.applications.VGG16(**defargs)
 elif model_name == "vgg19":
@@ -85,12 +129,12 @@ elif model_name == "inceptionv3":
     model = tf.keras.applications.InceptionV3(**defargs)
 elif model_name == "mobilenet":
     model = tf.keras.applications.MobileNet(**defargs,
-        depth_multiplier=depth_mult,
-        alpha=width_mult)
+        depth_multiplier = args.depth_mult,
+        alpha = args.width_mult)
 elif model_name == "mobilenetv2":
     model = tf.keras.applications.MobileNetV2(**defargs,
-        depth_multiplier=depth_mult,
-        alpha=width_mult)
+        depth_multiplier = args.depth_mult,
+        alpha = args.width_mult)
 elif model_name == "xception":
     model = tf.keras.applications.Xception(**defargs)
 else:
@@ -106,9 +150,9 @@ print("[INFO] used mem: {}% - ".format(psutil.virtual_memory().percent) )
  
 test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1./255)
 test_data = test_datagen.flow_from_directory(
-        test_path,
+        args.test_path,
         target_size=image_size,
-        batch_size=batch_size,
+        batch_size=args.batch_size,
         class_mode='sparse',
         shuffle=True)
 N_test_labels = test_data.labels.max() +1
@@ -129,16 +173,16 @@ start = time.time()
 
 results = np.array([])
 labels = np.array([])
-for nb in range(num_batch):
+for nb in range(args.num_batch):
     for td_batch, td_batch_label in test_data:
         print("Image batch shape: ", td_batch.shape)
         print("Label batch shape: ", td_batch_label.shape)
-        print("Batch number: " +str(nb+1) +" of " +str(num_batch))
+        print("Batch number: " +str(nb+1) +" of " +str(args.num_batch))
         break
 
     results_batch = model.predict(
         td_batch,
-        batch_size=batch_size,
+        batch_size=args.batch_size,
         steps =1) # Note: Keeping steps=1 so that we can retrieve the labels of each batch
 
     if results.size == 0:
@@ -179,5 +223,5 @@ print("Top {0} accuracy = {1:.3f}".format(L,accuracy))
 
 end = time.time()
 print('Elapsed time to classify {} images: {}'.format(
-    num_batch*batch_size, end-start) )
+    args.num_batch*args.batch_size, end-start) )
 
