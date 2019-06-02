@@ -11,4 +11,6 @@ mobilenet/*
 *.DS_Store
 *.h264
 capture/frames/*
+capture/frame_*jpg
+capture/ocv*csv
 
